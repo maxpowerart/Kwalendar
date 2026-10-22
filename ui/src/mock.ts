@@ -16,13 +16,13 @@ const cal = (accountId: string, id: string, summary: string, color: string, prim
 });
 
 const calendars: Calendar[] = [
-  cal('a1', 'personal', 'Личное', '#A57CF0', true),
-  cal('a1', 'sport', 'Спорт', '#3DBE8B'),
-  cal('a1', 'bdays', 'Дни рождения', '#E86BA6', false, 'reader'),
-  cal('a2', 'work', 'Основной', '#5B8DEF', true),
-  cal('a2', 'team', 'Команда', '#39B8C9', false, 'writer'),
-  cal('a2', 'releases', 'Релизы', '#F0A04B', false, 'reader'),
-  cal('a3', 'family', 'Общий', '#E5604F', true),
+  cal('a1', 'personal', 'Личное', '#C37BE8', true),
+  cal('a1', 'sport', 'Спорт', '#3DC28B'),
+  cal('a1', 'bdays', 'Дни рождения', '#E85D8A', false, 'reader'),
+  cal('a2', 'work', 'Основной', '#3D8BD8', true),
+  cal('a2', 'team', 'Команда', '#2EC4D6', false, 'writer'),
+  cal('a2', 'releases', 'Релизы', '#E8C13D', false, 'reader'),
+  cal('a3', 'family', 'Общий', '#E8665A', true),
   cal('a3', 'holidays', 'Праздники России', '#858792', false, 'reader', false),
 ];
 
@@ -178,12 +178,16 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
           view: 'week',
           sidebar: true,
           dayStartHour: 8,
+          theme: 'system',
           relayUrl: '',
           relayKey: '',
+          checkUpdates: true,
+          skippedVersion: '',
         },
         sync: { state: 'idle', lastSync: Date.now() - 12_000, pending: 0, message: null },
         mutedUntil: 0,
         pushActive: false,
+        builtinClient: true,
       };
       return s;
     }
@@ -246,6 +250,25 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
     }
     case 'add_account':
       throw new Error('В браузерном превью вход в Google недоступен — запустите приложение через `npm run tauri dev`');
+    case 'update_info':
+    case 'update_check':
+      return {
+        current: '0.1.0',
+        available: { version: '0.2.0', notes: 'Новое\n- Светлая тема и фирменный стиль\n- Перетаскивание событий между днями месяца\n\nИсправлено\n- Напоминания после сна иногда приходили дважды', url: 'Kwalendar_0.2.0_x64-setup.exe', sha256: '0'.repeat(64), published: '2026-11-02', manifestUrl: 'https://github.com/maxpowerart/Kwalendar/releases/download/v0.2.0/update.json' },
+        withdrawn: null,
+        checkedAt: Date.now(),
+        error: null,
+      };
+    case 'update_list':
+      return [
+        { version: '0.2.0', published: '2026-11-02', prerelease: false, withdrawn: false, reason: '', manifestUrl: 'm2' },
+        { version: '0.1.1', published: '2026-10-28', prerelease: false, withdrawn: true, reason: 'ломает синхронизацию повторов', manifestUrl: 'm11' },
+        { version: '0.1.0', published: '2026-10-22', prerelease: false, withdrawn: false, reason: '', manifestUrl: 'm1' },
+      ];
+    case 'update_manifest':
+      return { version: args.url === 'm1' ? '0.1.0' : args.url === 'm11' ? '0.1.1' : '0.2.0', notes: 'Описание версии', url: 'x.exe', sha256: '0'.repeat(64), published: null, manifestUrl: args.url };
+    case 'update_install':
+      throw new Error('В браузерном превью установка недоступна');
     case 'autostart_get':
       return true;
     default:

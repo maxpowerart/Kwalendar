@@ -24,9 +24,8 @@ impl Core {
                 return Ok(t.clone());
             }
         }
-        let cfg = self.config();
-        let (tok, exp) =
-            auth::refresh(&self.http, &self.token_url, cfg.google_client_id.trim(), cfg.google_client_secret.trim(), account).await?;
+        let (client_id, client_secret) = self.config().client();
+        let (tok, exp) = auth::refresh(&self.http, &self.token_url, &client_id, &client_secret, account).await?;
         self.tokens.lock().unwrap().insert(account.to_string(), (tok.clone(), exp));
         Ok(tok)
     }

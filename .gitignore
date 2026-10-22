@@ -4,3 +4,5 @@
 /src-tauri/gen
 *.log
 .DS_Store
+# Google OAuth client baked into local builds (CI uses repository secrets)
+oauth.local.json

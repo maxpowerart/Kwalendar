@@ -1,0 +1,105 @@
+name: Release
+
+# Push a tag vX.Y.Z (matching "version" in src-tauri/tauri.conf.json) to build the Windows
+# installer and publish a GitHub release with update.json — the channel Kwalendar checks.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)build, e.g. v0.2.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check tag matches app version
+        shell: pwsh
+        run: |
+          $ver = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          if ("v$ver" -ne $env:TAG) { throw "tag $env:TAG does not match tauri.conf.json version $ver" }
+          "VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Release notes from CHANGELOG.md
+        shell: pwsh
+        run: |
+          $lines = Get-Content CHANGELOG.md -Encoding utf8
+          $start = [array]::FindIndex([string[]]$lines, [Predicate[string]]{ param($l) $l -match "^## v?$([regex]::Escape($env:VERSION))(\s|$)" })
+          $notes = ''
+          if ($start -ge 0) {
+            $section = $lines[($start + 1)..($lines.Count - 1)]
+            $end = [array]::FindIndex([string[]]$section, [Predicate[string]]{ param($l) $l -match '^## ' })
+            if ($end -ge 0) { $section = if ($end -gt 0) { $section[0..($end - 1)] } else { @() } }
+            $notes = ($section -join "`n").Trim()
+          }
+          if (-not $notes) { Write-Warning "CHANGELOG.md has no section for $env:VERSION"; $notes = "Kwalendar $env:VERSION." }
+          $file = Join-Path $env:RUNNER_TEMP 'notes.md'
+          [IO.File]::WriteAllText($file, $notes + "`n", (New-Object Text.UTF8Encoding $false))
+          "NOTES_FILE=$file" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Test core
+        run: cargo test -p kw-core
+
+      - name: Build installer
+        shell: pwsh
+        env:
+          KW_UPDATE_CHANNEL: https://github.com/${{ github.repository }}/releases/latest/download/update.json
+          # Desktop OAuth client baked into the build (repository secrets).
+          KW_GOOGLE_CLIENT_ID: ${{ secrets.KW_GOOGLE_CLIENT_ID }}
+          KW_GOOGLE_CLIENT_SECRET: ${{ secrets.KW_GOOGLE_CLIENT_SECRET }}
+        run: |
+          if (-not $env:KW_GOOGLE_CLIENT_ID) { Write-Warning "KW_GOOGLE_CLIENT_ID secret is not set: users will have to enter their own OAuth client" }
+          npm ci
+          npx tauri build --bundles nsis
+
+      - name: update.json
+        shell: pwsh
+        run: |
+          $name = "Kwalendar_$($env:VERSION)_x64-setup.exe"
+          $src = "target/release/bundle/nsis/$name"
+          if (-not (Test-Path $src)) { throw "$src was not built" }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item $src dist/
+          $sha = (Get-FileHash "dist/$name" -Algorithm SHA256).Hash.ToLower()
+          $manifest = [ordered]@{
+            version   = $env:VERSION
+            notes     = [IO.File]::ReadAllText($env:NOTES_FILE).Trim()
+            url       = $name
+            sha256    = $sha
+            published = (Get-Date -Format 'yyyy-MM-dd')
+          }
+          [IO.File]::WriteAllText("dist/update.json", ($manifest | ConvertTo-Json), (New-Object Text.UTF8Encoding $false))
+          "$sha  $name" | Out-File dist/SHA256SUMS.txt -Encoding ascii
+          Get-Content dist/update.json
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Kwalendar ${{ env.VERSION }}
+          prerelease: ${{ contains(env.TAG, '-') }}
+          body_path: ${{ env.NOTES_FILE }}
+          files: |
+            dist/Kwalendar_${{ env.VERSION }}_x64-setup.exe
+            dist/update.json
+            dist/SHA256SUMS.txt

@@ -9,6 +9,7 @@ pub mod recurrence;
 mod push;
 mod reminders;
 mod sync;
+pub mod update;
 mod writes;
 
 use std::collections::HashMap;
@@ -61,6 +62,8 @@ pub struct Snapshot {
     pub sync: SyncStatus,
     pub muted_until: i64,
     pub push_active: bool,
+    /// This build ships an OAuth client: no Google Cloud setup needed.
+    pub builtin_client: bool,
 }
 
 impl Core {
@@ -169,6 +172,7 @@ impl Core {
             sync: self.sync_status(),
             muted_until: self.muted_until.load(Ordering::Relaxed),
             push_active: self.push_active(),
+            builtin_client: Config::builtin_client(),
         })
     }
 
@@ -220,12 +224,13 @@ impl Core {
         if !cfg.has_client() {
             bail!("Укажите OAuth Client ID в настройках");
         }
+        let (client_id, client_secret) = cfg.client();
         let li = auth::login(
             &self.http,
             &self.token_url,
             &self.userinfo_url,
-            cfg.google_client_id.trim(),
-            cfg.google_client_secret.trim(),
+            &client_id,
+            &client_secret,
             hint.as_deref(),
             open_url,
         )

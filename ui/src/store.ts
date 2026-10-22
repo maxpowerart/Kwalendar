@@ -201,6 +201,13 @@ function createStore() {
     if (s && s.config.view !== v) void api.setConfig({ ...s.config, view: v }).catch(() => {});
   }
 
+  async function snapConfigPatch(p: Partial<Snapshot['config']>) {
+    const s = snap();
+    if (!s) return;
+    await api.setConfig({ ...s.config, ...p });
+    await refresh();
+  }
+
   function setSidebar(v: boolean) {
     setSidebarSig(v);
     const s = snap();
@@ -236,6 +243,7 @@ function createStore() {
     sidebar,
     setSidebar,
     setSidebarSig,
+    snapConfigPatch,
     setViewSig,
     banners,
     setBanners,

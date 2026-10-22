@@ -3,12 +3,11 @@ import { api, targetOf, type Attendee, type Instance } from '../api';
 import { store } from '../store';
 import { I } from '../icons';
 import { minutesLabel, relative, whenLabel } from '../dates';
-import { onSolid } from '../layout';
 
 const RESP: Record<string, { t: string; c: string }> = {
   accepted: { t: 'да', c: 'var(--ok)' },
   tentative: { t: 'может быть', c: 'var(--warn)' },
-  declined: { t: 'нет', c: '#ff8a7a' },
+  declined: { t: 'нет', c: 'var(--err-text)' },
   needsAction: { t: 'нет ответа', c: 'var(--muted)' },
 };
 
@@ -41,7 +40,7 @@ function initials(a: Attendee) {
   return s.charAt(0).toUpperCase();
 }
 
-const AV_COLORS = ['#A57CF0', '#8EA2FF', '#F0A04B', '#39B8C9', '#3DBE8B', '#E86BA6', '#E5604F'];
+const AV_COLORS = ['#3D8BD8', '#2EC4D6', '#E8C13D', '#C37BE8', '#3DC28B', '#E85D8A', '#E8665A'];
 
 export function EventPanel(props: { inst: Instance }) {
   const i = () => props.inst;
@@ -104,9 +103,9 @@ export function EventPanel(props: { inst: Instance }) {
           <span style={{ width: '12px', height: '12px', 'border-radius': '4px', background: i().color, 'margin-top': '6px', flex: '0 0 auto' }} />
           <h2 style={{ 'text-decoration': i().selfResponse === 'declined' ? 'line-through' : undefined }}>{i().title}</h2>
         </div>
-        <p style={{ color: '#c9cbd2', 'padding-left': '22px' }}>{whenLabel(i())}</p>
+        <p style={{ color: 'var(--text)', 'padding-left': '22px' }}>{whenLabel(i())}</p>
         <Show when={rel()}>
-          <p style={{ color: 'var(--accent)', 'padding-left': '22px', 'font-size': '12px', 'font-weight': 500 }}>{rel()}</p>
+          <p style={{ color: 'var(--node)', 'padding-left': '22px', 'font-size': '12px', 'font-weight': 600 }}>{rel()}</p>
         </Show>
         <Show when={i().recurring}>
           <p class="muted" style={{ 'padding-left': '22px', 'font-size': '12px', display: 'flex', gap: '6px', 'align-items': 'center' }}>
@@ -117,7 +116,7 @@ export function EventPanel(props: { inst: Instance }) {
 
       <Show when={i().meetLink}>
         <div style={{ display: 'flex', 'flex-direction': 'column', gap: '6px' }}>
-          <button class="join" style={{ background: i().color, color: onSolid(i().color) }} onClick={() => api.openUrl(i().meetLink!)}>
+          <button class="join" onClick={() => api.openUrl(i().meetLink!)}>
             {I.video()}
             {i().meetLink!.includes('zoom') ? 'Подключиться к Zoom' : i().meetLink!.includes('meet.google') ? 'Присоединиться к Google Meet' : 'Присоединиться'}
           </button>

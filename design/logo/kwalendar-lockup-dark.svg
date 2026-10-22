@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 300" width="1400" height="300" role="img" aria-label="Kwalendar — Plan brighter days">
+  <!-- horizontal lock-up on the navy band -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@700&amp;family=Nunito:wght@600&amp;display=swap');
+    .word { font-family: 'Fredoka', 'Nunito', 'Varela Round', 'Segoe UI', sans-serif; font-weight: 700; font-size: 150px; letter-spacing: -1.5px; }
+    .tag { font-family: 'Nunito', 'Fredoka', 'Segoe UI', sans-serif; font-weight: 600; font-size: 26px; letter-spacing: 9px; }
+  </style>
+  <rect x="0" y="0" width="1400" height="300" rx="40" fill="#0F2240"/>
+  <g transform="translate(40 20) scale(0.66) translate(-80 -80)">
+    <path fill="#2EC4B6" d="M162 282C122 272 92 300 94 338C96 372 120 398 152 418C150 384 152 330 166 300Z"/>
+    <path fill="#2EC4B6" d="M350 282C390 272 420 300 418 338C416 372 392 398 360 418C362 384 360 330 346 300Z"/>
+    <path fill="#2EC4B6" d="M134 266C134 186 188 150 256 150C324 150 378 186 378 266Z"/>
+    <circle cx="190" cy="144" r="54" fill="#2EC4B6"/>
+    <circle cx="322" cy="144" r="54" fill="#2EC4B6"/>
+    <circle cx="190" cy="144" r="31" fill="#0F2240"/>
+    <circle cx="322" cy="144" r="31" fill="#0F2240"/>
+    <circle cx="199" cy="133" r="10" fill="#FF9F1C"/>
+    <circle cx="331" cy="133" r="10" fill="#FF9F1C"/>
+    <path d="M224 202Q256 226 288 202" fill="none" stroke="#0F2240" stroke-width="12" stroke-linecap="round"/>
+    <rect x="168" y="262" width="176" height="174" rx="20" fill="#FFFFFF"/>
+    <rect x="196" y="222" width="26" height="62" rx="13" fill="#FF9F1C"/>
+    <rect x="290" y="222" width="26" height="62" rx="13" fill="#FF9F1C"/>
+    <g fill="#D3EFEC">
+      <rect x="180" y="296" width="44" height="38" rx="8"/>
+      <rect x="234" y="296" width="44" height="38" rx="8"/>
+      <rect x="288" y="296" width="44" height="38" rx="8"/>
+      <rect x="180" y="344" width="44" height="38" rx="8"/>
+      <rect x="234" y="344" width="44" height="38" rx="8"/>
+      <rect x="180" y="392" width="44" height="34" rx="8"/>
+      <rect x="234" y="392" width="44" height="34" rx="8"/>
+      <rect x="288" y="392" width="44" height="34" rx="8"/>
+    </g>
+    <rect x="288" y="344" width="44" height="38" rx="8" fill="#FF9F1C"/>
+  </g>
+  <text class="word" x="300" y="200"><tspan fill="#2EC4B6">K</tspan><tspan fill="#FFFFFF">walendar</tspan></text>
+  <line x1="1040" y1="80" x2="1040" y2="220" stroke="#3A4A6E" stroke-width="3"/>
+  <g class="tag" fill="#A9B6CC">
+    <text x="1080" y="114">PLAN</text>
+    <text x="1080" y="160">BRIGHTER</text>
+    <text x="1080" y="206">DAYS</text>
+  </g>
+</svg>

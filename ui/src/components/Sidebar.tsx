@@ -67,7 +67,7 @@ function CalendarRow(props: { cal: Calendar }) {
       onClick={() => store.run(api.setCalendarSelected(props.cal.accountId, props.cal.id, !props.cal.selected))}
     >
       <span class="sq" classList={{ off: !props.cal.selected }} style={{ background: props.cal.color }}>
-        <Show when={props.cal.selected}>{I.check({ size: 11, stroke: 3.5 })}</Show>
+        <Show when={props.cal.selected}>{I.check({ size: 10, stroke: 4 })}</Show>
       </span>
       <span class="nm" style={{ color: props.cal.selected ? undefined : 'var(--text-3)' }}>
         {props.cal.summary}
@@ -84,6 +84,29 @@ export function Sidebar() {
   });
   const total = () => store.snap()?.calendars.length ?? 0;
 
+  // Collapsed account sections survive restarts (per-machine UI state).
+  const KEY = 'kw.collapsed';
+  const [collapsed, setCollapsed] = createSignal<Set<string>>(
+    new Set((() => {
+      try {
+        return JSON.parse(localStorage.getItem(KEY) ?? '[]') as string[];
+      } catch {
+        return [];
+      }
+    })()),
+  );
+  const toggle = (id: string) => {
+    const next = new Set(collapsed());
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setCollapsed(next);
+    try {
+      localStorage.setItem(KEY, JSON.stringify([...next]));
+    } catch {
+      /* storage unavailable */
+    }
+  };
+
   const create = () => {
     const start = new Date(store.anchor());
     const now = new Date();
@@ -94,33 +117,40 @@ export function Sidebar() {
 
   return (
     <aside class="sidebar">
-      <button class="create-btn" onClick={create}>
-        {I.plus({ size: 16, stroke: 2.2 })}Создать событие
-        <span style={{ 'font-family': 'var(--mono)', 'font-size': '11px', opacity: 0.7 }}>N</span>
+      <button class="btn create-btn" onClick={create}>
+        {I.plus({ size: 16, stroke: 2.2, node: [19, 5, 2.4] })}Создать событие
+        <span class="kbd" style={{ 'margin-left': '4px' }}>N</span>
       </button>
       <MiniMonth />
-      <div style={{ display: 'flex', 'flex-direction': 'column', gap: '14px' }}>
+      <div style={{ display: 'flex', 'flex-direction': 'column', gap: '6px' }}>
         <For each={groups()}>
           {(g) => (
             <div class="acc-group">
-              <div class="acc-head">
-                <span class="lbl" style={{ color: g.account.status === 'reauth' ? '#F0B877' : undefined }}>
-                  {g.account.name || g.account.email.split('@')[0]}
-                </span>
-                <span class="em">{g.account.email}</span>
-              </div>
-              <Show when={g.account.status === 'reauth'}>
-                <button class="cal warn-chip" onClick={() => store.setSettings(true)}>
-                  Нужно войти снова →
-                </button>
+              <button
+                class="sec"
+                classList={{ closed: collapsed().has(g.account.id) }}
+                aria-expanded={!collapsed().has(g.account.id)}
+                onClick={() => toggle(g.account.id)}
+              >
+                <svg class="chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                  <path d="M1 3l4 4 4-4z" fill="currentColor" />
+                </svg>
+                {g.account.name || g.account.email.split('@')[0]}
+                <span class="n">{g.account.email}</span>
+              </button>
+              <Show when={!collapsed().has(g.account.id)}>
+                <Show when={g.account.status === 'reauth'}>
+                  <button class="cal warn-chip" onClick={() => store.setSettings(true)}>
+                    Нужно войти снова →
+                  </button>
+                </Show>
+                <For each={g.cals}>{(c) => <CalendarRow cal={c} />}</For>
               </Show>
-              <For each={g.cals}>{(c) => <CalendarRow cal={c} />}</For>
             </div>
           )}
         </For>
       </div>
       <div class="side-foot">
-        {I.check({ size: 14 })}
         <span style={{ flex: 1 }}>
           {groups().length} акк. · {total()} календ.
         </span>

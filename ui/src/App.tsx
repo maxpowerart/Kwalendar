@@ -11,12 +11,14 @@ import { EventPanel } from './components/EventPanel';
 import { Editor } from './components/Editor';
 import { QuickAdd } from './components/QuickAdd';
 import { GoogleClientForm, Settings } from './components/Settings';
+import { initUpdates, UpdateDialog } from './components/Updates';
 import { I } from './icons';
 import { startOfDay } from './dates';
+import { setTheme } from './theme';
 import mark from './assets/mark.svg';
 
 function Onboarding() {
-  const hasClient = () => !!store.snap()?.config.googleClientId;
+  const hasClient = () => !!store.snap()?.builtinClient || !!store.snap()?.config.googleClientId;
   return (
     <div class="empty">
       <div class="box">
@@ -86,6 +88,7 @@ export function App() {
       requestAnimationFrame(() => requestAnimationFrame(() => void api.appReady()));
     }
 
+    void initUpdates();
     const offs = await Promise.all([
       listen('kw:changed', scheduleRefresh),
       listen<SyncStatus>('kw:sync', (sync) => {
@@ -103,6 +106,7 @@ export function App() {
   });
 
   createEffect(on(store.range, () => void store.load(), { defer: true }));
+  createEffect(() => setTheme(store.snap()?.config.theme ?? 'system'));
 
   const onKey = (e: KeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName;
@@ -227,6 +231,7 @@ export function App() {
       <Show when={store.settings() && store.snap()}>
         <Settings />
       </Show>
+      <UpdateDialog />
       <Banners />
     </div>
   );

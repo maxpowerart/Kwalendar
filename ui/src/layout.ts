@@ -103,18 +103,12 @@ function startOfDayMs(ms: number): number {
   return d.getTime();
 }
 
-/** Tinted fill + readable text for an event colour on the dark ground. */
-export function tint(hex: string, alpha = 0.22): { bg: string; fg: string; solid: string } {
-  const h = hex.replace('#', '');
-  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  const mix = (c: number) => Math.round(c + (255 - c) * 0.72);
+/** Tinted fill + readable text for an event colour. Pure CSS (color-mix), so it follows the theme. */
+export function tint(hex: string): { bg: string; fg: string; solid: string } {
   return {
-    bg: `rgba(${r},${g},${b},${alpha})`,
-    fg: `rgb(${mix(r)},${mix(g)},${mix(b)})`,
-    solid: `rgb(${r},${g},${b})`,
+    bg: `color-mix(in srgb, ${hex} var(--ev-bg-pct), transparent)`,
+    fg: `color-mix(in srgb, ${hex} var(--ev-fg-pct), var(--ev-base))`,
+    solid: hex,
   };
 }
 
@@ -126,5 +120,5 @@ export function onSolid(hex: string): string {
   const g = ((n >> 8) & 255) / 255;
   const b = (n & 255) / 255;
   const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.45 ? '#08122E' : '#FFFFFF';
+  return lum > 0.38 ? '#0F2240' : '#FFFFFF';
 }

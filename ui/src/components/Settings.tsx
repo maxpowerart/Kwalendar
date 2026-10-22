@@ -3,8 +3,9 @@ import { api, isTauri, type Config } from '../api';
 import { store } from '../store';
 import { I } from '../icons';
 import { time } from '../dates';
+import { UpdatesSettings } from './Updates';
 
-type Section = 'accounts' | 'google' | 'sync' | 'notify' | 'system' | 'keys';
+type Section = 'accounts' | 'google' | 'sync' | 'notify' | 'system' | 'updates' | 'keys';
 
 const NAV: { id: Section; label: string; icon: () => any }[] = [
   { id: 'accounts', label: 'Аккаунты', icon: () => I.users() },
@@ -12,6 +13,7 @@ const NAV: { id: Section; label: string; icon: () => any }[] = [
   { id: 'sync', label: 'Синхронизация', icon: () => I.sync() },
   { id: 'notify', label: 'Уведомления', icon: () => I.bell() },
   { id: 'system', label: 'Система', icon: () => I.sidebar() },
+  { id: 'updates', label: 'Обновления', icon: () => I.down() },
   { id: 'keys', label: 'Горячие клавиши', icon: () => I.text() },
 ];
 
@@ -61,7 +63,7 @@ export function GoogleClientForm(props: { onSaved?: () => void }) {
 }
 
 export function Settings() {
-  const [section, setSection] = createSignal<Section>(store.snap()?.config.googleClientId ? 'accounts' : 'google');
+  const [section, setSection] = createSignal<Section>(store.snap()?.builtinClient || store.snap()?.config.googleClientId ? 'accounts' : 'google');
   const [adding, setAdding] = createSignal(false);
   const [autostart, { mutate: setAutostart }] = createResource(() => api.autostartGet().catch(() => false));
   const snap = () => store.snap();
@@ -73,7 +75,7 @@ export function Settings() {
   };
 
   const add = async (hint?: string) => {
-    if (!cfg().googleClientId) {
+    if (!snap()!.builtinClient && !cfg().googleClientId) {
       setSection('google');
       return store.banner('Сначала укажите OAuth-клиент Google', 'warn');
     }
@@ -128,7 +130,7 @@ export function Settings() {
                           <p style={{ 'font-weight': 600 }}>
                             {a.email} <Show when={a.name}><span class="muted" style={{ 'font-weight': 400 }}>· {a.name}</span></Show>
                           </p>
-                          <p class="muted" style={{ 'font-size': '12px', color: a.status === 'reauth' || a.status === 'error' ? '#F0B877' : undefined }}>
+                          <p class="muted" style={{ 'font-size': '12px', color: a.status === 'reauth' || a.status === 'error' ? 'var(--warn-text)' : undefined }}>
                             {a.status === 'reauth'
                               ? 'Доступ отозван — показываем кэш, изменения не отправляются'
                               : a.status === 'error'
@@ -161,7 +163,16 @@ export function Settings() {
               </div>
             </Match>
             <Match when={section() === 'google'}>
-              <p class="muted">Kwalendar обращается к Google напрямую, без своих серверов. Для этого нужен собственный OAuth-клиент — это бесплатно и занимает пару минут.</p>
+              <Show
+                when={snap()!.builtinClient}
+                fallback={
+                  <p class="muted">Kwalendar обращается к Google напрямую, без своих серверов. Для этого нужен собственный OAuth-клиент — это бесплатно и занимает пару минут.</p>
+                }
+              >
+                <p class="muted">
+                  В приложение уже встроен OAuth-клиент Kwalendar — для входа ничего настраивать не нужно. Свой клиент из Google Cloud Console нужен, только если хотите работать через собственный проект (свои квоты, своя страница согласия). Пустые поля — встроенный клиент.
+                </p>
+              </Show>
               <GoogleClientForm onSaved={() => setSection('accounts')} />
             </Match>
             <Match when={section() === 'sync'}>
@@ -231,6 +242,18 @@ export function Settings() {
             <Match when={section() === 'system'}>
               <div>
                 <div class="set">
+                  <div class="l"><p>Тема</p><p>«Как в Windows» следует за системной настройкой</p></div>
+                  <div class="seg" role="group" aria-label="Тема">
+                    <For each={[['system', 'Как в Windows'], ['dark', 'Тёмная'], ['light', 'Светлая']] as const}>
+                      {([v, label]) => (
+                        <button classList={{ on: cfg().theme === v }} aria-pressed={cfg().theme === v} onClick={() => patch({ theme: v })}>
+                          {label}
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </div>
+                <div class="set">
                   <div class="l"><p>Запускать вместе с Windows</p><p>Свёрнуто в трей — напоминания работают, окно не мешает</p></div>
                   <Toggle
                     on={!!autostart()}
@@ -251,6 +274,9 @@ export function Settings() {
                   <div class="l"><p>Закрытие окна</p><p>Крестик сворачивает в трей. Выход — через меню значка в трее</p></div>
                 </div>
               </div>
+            </Match>
+            <Match when={section() === 'updates'}>
+              <UpdatesSettings />
             </Match>
             <Match when={section() === 'keys'}>
               <div style={{ display: 'grid', 'grid-template-columns': 'max-content 1fr', gap: '10px 24px', 'align-items': 'center' }}>

@@ -5,6 +5,7 @@ import { store } from '../store';
 import { I, WinClose, WinMax, WinMin } from '../icons';
 import { plural, time } from '../dates';
 import mark from '../assets/mark.svg';
+import { UpdateButton } from './Updates';
 
 function ago(ms: number, now: number): string {
   const s = Math.max(0, Math.round((now - ms) / 1000));
@@ -27,15 +28,15 @@ export function TitleBar() {
 
   const status = createMemo(() => {
     const s = sync();
-    if (!s || !hasAccounts()) return { color: '#5A5C66', text: 'Нет аккаунтов' };
+    if (!s || !hasAccounts()) return { color: 'var(--chrome-muted)', text: 'Нет аккаунтов' };
     const q = s.pending ? ` · ${s.pending} в очереди` : '';
     switch (s.state) {
       case 'syncing':
-        return { color: 'var(--accent)', text: `Синхронизация…${q}`, spin: true };
+        return { color: 'var(--icon)', text: `Синхронизация…${q}`, spin: true };
       case 'offline':
-        return { color: 'var(--warn)', text: `Офлайн${q}` };
+        return { color: 'var(--node)', text: `Офлайн${q}` };
       case 'error':
-        return { color: 'var(--danger)', text: 'Ошибка синхронизации' };
+        return { color: 'var(--err-text)', text: 'Ошибка синхронизации' };
       default:
         return {
           color: 'var(--ok)',
@@ -49,8 +50,8 @@ export function TitleBar() {
     <header class="titlebar" data-tauri-drag-region>
       <div class="side" data-tauri-drag-region>
         <img src={mark} alt="" width="20" height="22" style={{ display: 'block' }} data-tauri-drag-region />
-        <span style={{ 'font-weight': 600, 'letter-spacing': '-0.01em' }} data-tauri-drag-region>
-          Kwalendar
+        <span class="wm" style={{ 'font-size': '16px' }} data-tauri-drag-region>
+          <span class="k">K</span>walendar
         </span>
       </div>
       <button class="search-pill" onClick={() => store.setQuickAdd(true)}>
@@ -59,9 +60,10 @@ export function TitleBar() {
         <span class="kbd">Ctrl K</span>
       </button>
       <div class="side end" data-tauri-drag-region>
+        <UpdateButton />
         <Show when={muted()}>
           <button
-            class="ib"
+            class="cb"
             title={`Уведомления выключены до ${time(store.snap()!.mutedUntil)} — включить`}
             aria-label="Включить уведомления"
             onClick={async () => {
@@ -76,13 +78,13 @@ export function TitleBar() {
           <span class="dot" style={{ width: '7px', height: '7px', background: status().color }} />
           {status().text}
         </span>
-        <button class="ib" aria-label="Синхронизировать сейчас" title="Синхронизировать (F5)" onClick={() => api.syncNow()}>
+        <button class="cb" aria-label="Синхронизировать сейчас" title="Синхронизировать (F5)" onClick={() => api.syncNow()}>
           <span class={status().spin ? 'spin' : ''} style={{ display: 'inline-flex' }}>
-            {I.sync({ size: 15 })}
+            {I.sync({ size: 16, node: [20, 20, 2.2] })}
           </span>
         </button>
-        <button class="ib" aria-label="Настройки" title="Настройки (Ctrl+,)" onClick={() => store.setSettings(true)}>
-          {I.settings({ size: 15 })}
+        <button class="cb" aria-label="Настройки" title="Настройки (Ctrl+,)" onClick={() => store.setSettings(true)}>
+          {I.settings({ size: 16, node: [12, 12, 3.2] })}
         </button>
         <Show when={win}>
           <button class="wc" aria-label="Свернуть" onClick={() => win!.minimize()}>

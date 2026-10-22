@@ -4,7 +4,7 @@ import { store } from '../store';
 import { layoutAllDay, layoutDay, onSolid, tint } from '../layout';
 import { addDays, DAY, hhmm, sameDay, startOfDay, time, timeRange, weekdayShort } from '../dates';
 
-const HOUR = 52;
+const HOUR = 48;
 const SNAP = 15;
 const px = (min: number) => (min * HOUR) / 60;
 
@@ -303,7 +303,7 @@ export function WeekView() {
                   {(x) => {
                     const c = x() as Extract<Drag, { kind: 'create' }>;
                     return (
-                      <div class="ghost" style={{ top: `${px(c.from)}px`, height: `${px(c.to - c.from)}px` }}>
+                      <div class="drag-ghost" style={{ top: `${px(c.from)}px`, height: `${px(c.to - c.from)}px` }}>
                         {hhmm(startOfDay(d).getTime() + c.from * 60_000)}–{hhmm(startOfDay(d).getTime() + c.to * 60_000)}
                       </div>
                     );
@@ -332,7 +332,7 @@ export function WeekView() {
                     const base = startOfDay(d).getTime();
                     const st = (r.inst.start - base) / 60_000;
                     return (
-                      <div class="ghost" style={{ top: `${px(st)}px`, height: `${px(r.endMin - st)}px` }}>
+                      <div class="drag-ghost" style={{ top: `${px(st)}px`, height: `${px(r.endMin - st)}px` }}>
                         {r.inst.title} · до {hhmm(base + r.endMin * 60_000)}
                       </div>
                     );

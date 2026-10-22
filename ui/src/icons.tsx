@@ -1,8 +1,9 @@
 import type { JSX } from 'solid-js';
 
-type P = { size?: number; stroke?: number };
+/** `node`: orange dot (cx, cy, r) — the "today / now" accent from the logo, as on GitKwaken icons. */
+type P = { size?: number; stroke?: number; node?: [number, number, number] };
 
-const svg = (paths: JSX.Element, { size = 16, stroke = 2 }: P = {}) => (
+const svg = (paths: JSX.Element, { size = 16, stroke = 2, node }: P = {}) => (
   <svg
     width={size}
     height={size}
@@ -15,6 +16,7 @@ const svg = (paths: JSX.Element, { size = 16, stroke = 2 }: P = {}) => (
     aria-hidden="true"
   >
     {paths}
+    {node && <circle cx={node[0]} cy={node[1]} r={node[2]} fill="var(--node)" stroke="none" />}
   </svg>
 );
 

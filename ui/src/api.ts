@@ -72,6 +72,9 @@ export interface Config {
   view: string;
   sidebar: boolean;
   dayStartHour: number;
+  theme: 'system' | 'dark' | 'light';
+  checkUpdates: boolean;
+  skippedVersion: string;
   relayUrl: string;
   relayKey: string;
 }
@@ -90,6 +93,7 @@ export interface Snapshot {
   sync: SyncStatus;
   mutedUntil: number;
   pushActive: boolean;
+  builtinClient: boolean;
 }
 
 export interface EventInput {
@@ -171,3 +175,48 @@ export const api = {
   autostartSet: (enabled: boolean) => call<void>('autostart_set', { enabled }),
   testNotification: () => call<void>('test_notification'),
 };
+
+// ---------- updates ----------
+
+export interface Release {
+  version: string;
+  notes: string;
+  url: string;
+  sha256: string;
+  published: string | null;
+  manifestUrl: string;
+}
+
+export interface Listed {
+  version: string;
+  published: string;
+  prerelease: boolean;
+  withdrawn: boolean;
+  reason: string;
+  manifestUrl: string;
+}
+
+export interface UpdateInfo {
+  current: string;
+  available: Release | null;
+  withdrawn: { reason: string; target: Listed | null } | null;
+  checkedAt: number | null;
+  error: string | null;
+}
+
+export const updates = {
+  info: () => call<UpdateInfo>('update_info'),
+  check: () => call<UpdateInfo>('update_check'),
+  list: () => call<Listed[]>('update_list'),
+  manifest: (url: string) => call<Release>('update_manifest', { url }),
+  skip: (version: string) => call<void>('update_skip', { version }),
+  install: (release: Release) => call<void>('update_install', { release }),
+};
+
+/** semver-ish compare of "x.y.z" (pre-release tags ignored). */
+export function cmpVersion(a: string, b: string): number {
+  const p = (v: string) => v.replace(/^v/i, '').split(/[.-]/).slice(0, 3).map((x) => parseInt(x, 10) || 0);
+  const [x, y] = [p(a), p(b)];
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i];
+  return 0;
+}

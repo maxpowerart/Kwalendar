@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Config {
-    /// OAuth "Desktop app" client from Google Cloud Console.
+    /// Own OAuth "Desktop app" client; empty = the client built into the app.
     pub google_client_id: String,
     pub google_client_secret: String,
     pub reminders_enabled: bool,
@@ -16,17 +16,23 @@ pub struct Config {
     pub view: String,
     pub sidebar: bool,
     pub day_start_hour: u32,
+    /// "system" | "dark" | "light"
+    pub theme: String,
     /// Optional push relay (see `relay/`). Empty = polling only.
     pub relay_url: String,
     /// Secret channel key shared with the relay; generated on first use.
     pub relay_key: String,
+    /// Check GitHub releases at startup and every 6 hours.
+    pub check_updates: bool,
+    /// Version the user chose to skip; background checks do not offer it.
+    pub skipped_version: String,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            google_client_id: option_env!("KW_GOOGLE_CLIENT_ID").unwrap_or_default().to_string(),
-            google_client_secret: option_env!("KW_GOOGLE_CLIENT_SECRET").unwrap_or_default().to_string(),
+            google_client_id: String::new(),
+            google_client_secret: String::new(),
             reminders_enabled: true,
             notify_changes: true,
             poll_focused_secs: 30,
@@ -34,8 +40,11 @@ impl Default for Config {
             view: "week".into(),
             sidebar: true,
             day_start_hour: 8,
+            theme: "system".into(),
             relay_url: String::new(),
             relay_key: String::new(),
+            check_updates: true,
+            skipped_version: String::new(),
         }
     }
 }
@@ -70,6 +79,23 @@ impl Config {
     }
 
     pub fn has_client(&self) -> bool {
-        !self.google_client_id.trim().is_empty()
+        !self.client().0.is_empty()
+    }
+
+    /// The OAuth client to use: the user's own if set, else the one baked in at build time.
+    pub fn client(&self) -> (String, String) {
+        let id = self.google_client_id.trim();
+        if !id.is_empty() {
+            return (id.to_string(), self.google_client_secret.trim().to_string());
+        }
+        (
+            option_env!("KW_BUILTIN_CLIENT_ID").unwrap_or_default().to_string(),
+            option_env!("KW_BUILTIN_CLIENT_SECRET").unwrap_or_default().to_string(),
+        )
+    }
+
+    /// This build ships its own OAuth client: users only need to sign in.
+    pub fn builtin_client() -> bool {
+        option_env!("KW_BUILTIN_CLIENT_ID").is_some_and(|s| !s.is_empty())
     }
 }

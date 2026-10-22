@@ -1,4 +1,5 @@
 mod toast;
+mod updater;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -10,8 +11,8 @@ use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_opener::OpenerExt as _;
 
-struct AppState {
-    core: Arc<Core>,
+pub(crate) struct AppState {
+    pub(crate) core: Arc<Core>,
     start_hidden: AtomicBool,
 }
 
@@ -297,6 +298,7 @@ pub fn run() {
 
             let handle = app.handle().clone();
             let core = Core::open(&dir, move |ev| handle_core_event(&handle, ev))?;
+            app.manage(updater::Updates::default());
             app.manage(AppState { core: core.clone(), start_hidden: AtomicBool::new(start_hidden) });
             build_tray(app.handle())?;
             update_tray_tooltip(app.handle(), &core);
@@ -304,6 +306,7 @@ pub fn run() {
             tauri::async_runtime::spawn(core.clone().run_sync_loop());
             tauri::async_runtime::spawn(core.clone().run_reminder_loop());
             tauri::async_runtime::spawn(core.clone().run_push_loop());
+            tauri::async_runtime::spawn(updater::background(app.handle().clone()));
 
             // Safety net: show the window even if the UI never reports ready.
             if !start_hidden {
@@ -356,7 +359,13 @@ pub fn run() {
             app_ready,
             autostart_get,
             autostart_set,
-            test_notification
+            test_notification,
+            updater::update_info,
+            updater::update_check,
+            updater::update_list,
+            updater::update_manifest,
+            updater::update_skip,
+            updater::update_install
         ])
         .run(tauri::generate_context!())
         .expect("error while running Kwalendar");

@@ -175,7 +175,7 @@ export function Editor(props: { draft: Draft }) {
               </label>
             </Show>
             <Show when={invalid()}>
-              <span style={{ color: '#ff8a7a', 'font-size': '12px' }}>Конец раньше начала</span>
+              <span style={{ color: 'var(--err-text)', 'font-size': '12px' }}>Конец раньше начала</span>
             </Show>
           </div>
           <div class="field">
