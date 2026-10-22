@@ -153,7 +153,7 @@ export function QuickAdd() {
               <Show when={cal()}>
                 <span class="pill">
                   <span class="dot" style={{ background: cal()!.color }} />
-                  {store.snap()?.accounts.find((a) => a.id === cal()!.accountId)?.name ?? ''} · {cal()!.summary}
+                  {store.calendarLabel(cal())}
                 </span>
               </Show>
               <span class="pill">{I.bell({ size: 13 })}как в календаре</span>

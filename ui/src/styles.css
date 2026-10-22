@@ -409,3 +409,7 @@ textarea.inp { height: auto; min-height: 72px; padding: 6px 8px; resize: vertica
 
 @media (max-width: 1100px) { .panel { flex-basis: 290px; } }
 @media (max-width: 960px) { .sidebar { display: none; } }
+
+/* long account names stay on one line in section headers */
+.sec .nm { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec .n { flex: 0 1000 auto; max-width: 55%; }

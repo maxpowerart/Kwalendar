@@ -185,7 +185,7 @@ export function Editor(props: { draft: Draft }) {
                 {(a) => (
                   <optgroup label={a.email}>
                     <For each={cals().filter((c) => c.accountId === a.id)}>
-                      {(c) => <option value={`${c.accountId}|${c.id}`}>{c.summary}</option>}
+                      {(c) => <option value={`${c.accountId}|${c.id}`}>{store.calendarLabel(c)}</option>}
                     </For>
                   </optgroup>
                 )}

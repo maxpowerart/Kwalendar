@@ -63,14 +63,14 @@ function CalendarRow(props: { cal: Calendar }) {
     <button
       class="cal"
       aria-pressed={props.cal.selected}
-      title={props.cal.accessRole === 'reader' ? `${props.cal.summary} · только чтение` : props.cal.summary}
+      title={props.cal.accessRole === 'reader' ? `${store.calendarLabel(props.cal)} · только чтение` : store.calendarLabel(props.cal)}
       onClick={() => store.run(api.setCalendarSelected(props.cal.accountId, props.cal.id, !props.cal.selected))}
     >
       <span class="sq" classList={{ off: !props.cal.selected }} style={{ background: props.cal.color }}>
         <Show when={props.cal.selected}>{I.check({ size: 10, stroke: 4 })}</Show>
       </span>
       <span class="nm" style={{ color: props.cal.selected ? undefined : 'var(--text-3)' }}>
-        {props.cal.summary}
+        {store.calendarLabel(props.cal)}
       </span>
     </button>
   );
@@ -135,7 +135,7 @@ export function Sidebar() {
                 <svg class="chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
                   <path d="M1 3l4 4 4-4z" fill="currentColor" />
                 </svg>
-                {g.account.name || g.account.email.split('@')[0]}
+                <span class="nm" title={g.account.name || g.account.email}>{g.account.name || g.account.email.split('@')[0]}</span>
                 <span class="n">{g.account.email}</span>
               </button>
               <Show when={!collapsed().has(g.account.id)}>

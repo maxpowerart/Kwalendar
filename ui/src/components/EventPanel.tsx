@@ -139,7 +139,7 @@ export function EventPanel(props: { inst: Instance }) {
           {I.calendar()}
           <div>
             <div>
-              {account()?.name ?? account()?.email} · {cal()?.summary}
+              {store.calendarLabel(cal())}{account()?.name ? ` · ${account()!.name}` : ''}
             </div>
             <div class="sub">{account()?.email}</div>
           </div>

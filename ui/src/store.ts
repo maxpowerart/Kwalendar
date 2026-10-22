@@ -148,6 +148,12 @@ function createStore() {
   }
 
   const calendars = createMemo(() => snap()?.calendars ?? []);
+  // Google names the primary calendar after the account e-mail; show something readable instead.
+  const calendarLabel = (c: Calendar | undefined): string => {
+    if (!c) return '';
+    const acc = snap()?.accounts.find((a) => a.id === c.accountId);
+    return c.primary && (c.summary === acc?.email || c.summary === c.id) ? 'Основной' : c.summary;
+  };
   const calendarOf = (accountId: string, id: string): Calendar | undefined =>
     calendars().find((c) => c.accountId === accountId && c.id === id);
   const writableCalendars = createMemo(() =>
@@ -255,6 +261,7 @@ function createStore() {
     run,
     calendars,
     calendarOf,
+    calendarLabel,
     writableCalendars,
     defaultCalendar,
     newDraft,
