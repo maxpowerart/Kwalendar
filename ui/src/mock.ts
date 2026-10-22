@@ -2,6 +2,9 @@
 import type { Account, Calendar, EditTarget, EventInput, Instance, Snapshot } from './api';
 import { addDays, isoDate, startOfDay, startOfWeek } from './dates';
 
+// Preview knobs for screenshots: ?view=month&theme=light&select=Дизайн
+const urlParam = (k: string) => new URLSearchParams(location.search).get(k);
+
 const listeners = new Map<string, Set<(p: unknown) => void>>();
 const emit = (event: string, payload: unknown = null) => listeners.get(event)?.forEach((cb) => cb(payload));
 
@@ -175,10 +178,10 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
           notifyChanges: true,
           pollFocusedSecs: 30,
           pollBackgroundSecs: 180,
-          view: 'week',
+          view: urlParam('view') ?? 'week',
           sidebar: true,
           dayStartHour: 8,
-          theme: 'system',
+          theme: (urlParam('theme') as 'system' | 'dark' | 'light' | null) ?? 'system',
           relayUrl: '',
           relayKey: '',
           checkUpdates: true,

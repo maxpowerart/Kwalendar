@@ -1,104 +1,184 @@
+<p align="center"><img src="docs/assets/icon.svg" width="128" alt="Kwalendar logo"></p>
+
 # Kwalendar
 
-Быстрый десктопный календарь для нескольких аккаунтов Google. Windows сейчас, macOS/Linux — тот же код.
+A fast, lightweight desktop calendar for Google Calendar, for Windows, written in Rust.
 
-- **Local-first**: окно открывается сразу с данными из локальной SQLite, сеть работает в фоне.
-- **Экономная синхронизация**: только изменения по `syncToken`; 30 с при активном окне, 3 мин в трее, сразу после выхода из сна и при возврате в окно.
-- **Офлайн**: правки применяются мгновенно и уходят в Google из очереди, когда появится сеть.
-- **Уведомления Windows** с кнопками «Присоединиться» (Meet/Zoom/Teams) и «Через 5 мин»; сообщения о переносах и новых приглашениях.
-- **Несколько аккаунтов Google**, refresh-токены в Диспетчере учётных данных Windows.
-- **Ctrl+K** — быстрый ввод фразой («Созвон с Петей завтра в 15 на 30 мин #работа») и поиск; **Ctrl+Alt+K** — из любого окна.
-- Неделя / день / месяц / повестка, перетаскивание и растягивание событий, создание выделением.
+Kwalendar shows the calendars of all your Google accounts — personal, work, family — in one
+window. It keeps a local copy of your calendars, so it opens instantly and keeps working offline,
+and it reminds you about meetings with native Windows notifications. The UI is
+[SolidJS](https://www.solidjs.com/) in a [Tauri 2](https://tauri.app/) shell (WebView2); sync,
+storage, recurrence and reminders live in a Rust core that never blocks the window.
 
-Стек и архитектура: [docs/STACK.md](docs/STACK.md).
+> **AI-generated code.** Everything in this repository — source code, tests, scripts,
+> installers, CI workflows and documentation — was written by an AI model (Anthropic's
+> Claude, through Claude Code), directed and reviewed by a human. The logo concept was supplied
+> by the project owner. No code was copied from other projects; third-party code is used only as
+> normal dependencies under their own licenses (see [Third-party software](#third-party-software)).
 
-## Первый запуск
+> Status: 0.1.0. Windows 10/11 x64 is the target; the core and the UI are cross-platform, macOS and
+> Linux builds are not published yet.
 
-Kwalendar ходит в Google напрямую, поэтому нужен свой OAuth-клиент (бесплатно, один раз):
+![Week view](docs/screenshots/week-dark.png)
 
-1. [Google Cloud Console](https://console.cloud.google.com/) → новый проект → включить **Google Calendar API**.
-2. **OAuth consent screen** → External, scope `https://www.googleapis.com/auth/calendar`.
-   Переведите статус в **In production**: в режиме Testing Google отзывает вход через 7 дней.
-3. **Credentials → Create credentials → OAuth client ID → Desktop app**.
-4. Вставьте Client ID и Client secret в Kwalendar (экран приветствия или Настройки → Подключение Google) и добавьте аккаунты.
+<p>
+  <img src="docs/screenshots/month-dark.png" width="49%" alt="Month view">
+  <img src="docs/screenshots/week-light.png" width="49%" alt="Week view, light theme">
+</p>
 
-Для разработки можно задать клиент переменными окружения `KW_GOOGLE_CLIENT_ID` / `KW_GOOGLE_CLIENT_SECRET` (при сборке — зашиваются по умолчанию).
+## Features
 
-## Разработка
+- **Several Google accounts in one view**: calendars of every connected account side by side,
+  each calendar can be shown or hidden; day, week, month and agenda views; mini month.
+- **Events**: create, edit, delete; drag to move, drag the bottom edge to resize, drag on an
+  empty slot to create; all-day and multi-day events; recurring events (edit just this
+  occurrence or the whole series); attendees and RSVP (yes / maybe / no); Google Meet links.
+- **Quick add** (`Ctrl+K`, or `Ctrl+Alt+K` from anywhere in Windows): type
+  *"Call with Peter tomorrow at 3pm for 30 min #work"* — date, time, duration and calendar are
+  parsed (English and Russian); also searches your events and shows conflicts.
+- **Reminders**: Windows notifications with *Join* (Meet / Zoom / Teams) and *Snooze* buttons,
+  caught up after the PC wakes from sleep; notices when someone moves a meeting or invites you;
+  *Do not disturb for 1 hour* from the tray.
+- **Offline first**: the window reads only the local database; changes are applied instantly
+  and sent to Google from a queue when the network is back, with conflict handling
+  (the server version wins and you are told).
+- **Tray app**: closing the window keeps Kwalendar in the tray; optional start with Windows.
+- **Styles**: dark and light themes (or follow Windows), in the restrained *Kwak* look shared
+  with [GitKwaken](https://github.com/maxpowerart/GitKwaken).
+- **Self-update** from GitHub releases, with a version picker and rollback (see
+  [Updates and going back](#updates-and-going-back)).
 
-Нужны Rust (stable, MSVC), Node 20+, WebView2 (есть в Windows 11).
+## How sync works
 
-```bash
+- **Incremental**: Google's `syncToken` returns only what changed since the last check — usually
+  an empty answer of a few hundred bytes. All calendars of an account are checked in **one
+  batched HTTP request**.
+- **When**: every 30 s while the window is focused, every 3 min in the tray, and right away after
+  wake-up from sleep, network reconnect or switching back to the window.
+- **First start**: the visible weeks are fetched first so the screen fills in seconds, then the
+  full history loads in the background.
+- **Push (optional)**: deploy the tiny [relay](relay/README.md) (a free Cloudflare Worker) and
+  enter its address in Settings › Sync. Google then notifies Kwalendar within seconds through
+  `events.watch`, and polling drops to a rare safety net. The relay never sees event contents.
+
+## Installing
+
+Grab `Kwalendar_<ver>_x64-setup.exe` from the
+[Releases page](https://github.com/maxpowerart/Kwalendar/releases): a per-user installer (no admin
+rights) with a Start-menu entry; it upgrades in place. Requirements: Windows 10 or 11 x64 with
+the WebView2 runtime (preinstalled on Windows 11).
+
+Then *Add Google account* and sign in in your browser. Until the app finishes Google's
+verification, Google shows *"Google hasn't verified this app"*: choose *Advanced › Go to
+Kwalendar*. Work accounts on Google Workspace may block apps their admin has not configured
+(*"You can't access this app until an admin…"*): the admin can allow Kwalendar in the Admin
+console under *Security › Access and data control › API controls › Manage third-party app access*.
+
+Your data stays on your PC: see the [Privacy Policy](https://maxpowerart.github.io/Kwalendar/privacy.html).
+
+## Updates and going back
+
+Kwalendar checks the latest GitHub release at startup and every 6 hours. A newer one shows a
+button in the title bar: it opens the release's changelog with *Update and restart*, *Later* and
+*Skip this version*. The installer is downloaded, verified against its SHA-256, installed
+silently after Kwalendar exits, and the app starts again.
+
+- **Install another version** (Settings › Updates): lists every release; any of them can be
+  installed, older ones included, e.g. to go back after an update that went wrong. Going back
+  uninstalls the current version first; accounts, settings and the local calendar copy are kept.
+- **Withdrawing a bad release** (maintainers): run the *Withdraw release* workflow
+  (Actions › Withdraw release) with the version and a reason. The release is marked
+  "(withdrawn)" and as a pre-release, and the update channel goes back to the newest good
+  release, so nobody is offered the bad one any more. Installations already running it show
+  *Version withdrawn* with the reason and offer the good version. Running the workflow with
+  *restore* undoes it.
+
+Release notes come from [CHANGELOG.md](CHANGELOG.md): the release workflow copies the
+`## <version>` section into the update channel and the GitHub release.
+
+## Building
+
+```sh
+# Rust stable (MSVC toolchain), Node 20+, WebView2
 npm install
-npm run tauri dev
+npm run tauri dev          # run with hot reload
+npm run tauri build        # release build + NSIS / MSI installers
+cargo test -p kw-core      # core tests, including end-to-end sync against a fake Google API
+npm run dev                # UI only, in a browser, on demo data (http://localhost:1420)
 ```
 
-UI без Rust, на демо-данных в браузере: `npm run dev` → http://localhost:1420.
+**Google OAuth client.** Release builds embed the project's *Desktop app* OAuth client, so users
+only sign in. Locally, put your own client in an untracked `oauth.local.json` at the repository
+root (it is git-ignored):
 
-Тесты ядра:
-
-```bash
-cargo test -p kw-core
+```json
+{ "client_id": "…apps.googleusercontent.com", "client_secret": "GOCSPX-…" }
 ```
 
-Сборка:
+or set `KW_GOOGLE_CLIENT_ID` / `KW_GOOGLE_CLIENT_SECRET`. CI reads them from repository secrets of
+the same names. A build without a client asks for one on the welcome screen
+(Google Cloud Console › Credentials › *OAuth client ID* › *Desktop app*).
 
-```bash
-npm run tauri build
+**Releasing.** Bump `version` in `src-tauri/tauri.conf.json`, add a `## <version>` section to
+[CHANGELOG.md](CHANGELOG.md), then push a tag:
+
+```sh
+git tag v0.2.0 && git push origin main v0.2.0
 ```
 
-## Устройство
+The *Release* workflow runs the tests, builds the installer and publishes the GitHub release with
+`update.json`.
 
-```
-crates/kw-core/   ядро без зависимостей от Tauri
-  db.rs           SQLite (WAL): аккаунты, календари, события, outbox
-  google.rs       клиент Calendar API v3, разбор событий
-  auth.rs         OAuth loopback + PKCE, keyring
-  sync.rs         инкрементальная синхронизация, отправка outbox, 410/412/429
-  recurrence.rs   разворачивание повторов (RRULE/EXDATE) и исключений
-  writes.rs       оптимистичные правки: создание, изменение, перенос, удаление, RSVP
-  reminders.rs    планировщик напоминаний, отложенные, догоняющие после сна
-src-tauri/        оболочка: команды, трей, тосты, автозапуск, горячая клавиша
-ui/               SolidJS + TypeScript
-```
+## Keyboard shortcuts
 
-Данные: `%APPDATA%\com.kwalendar.app\` (`kwalendar.db`, `config.json`).
+| Shortcut | Action |
+|---|---|
+| `Ctrl+K` | Quick add and search |
+| `Ctrl+Alt+K` | Quick add from any app (global) |
+| `N` | New event |
+| `T` | Today |
+| `J` / `→`, `K` / `←` | Next / previous period |
+| `1` `2` `3` `4` | Day / week / month / agenda |
+| `E` / `Del` | Edit / delete the selected event |
+| `Ctrl+B` | Toggle sidebar |
+| `F5` | Sync now |
+| `Ctrl+,` | Settings |
 
-## Синхронизация подробнее
+## Architecture
 
-- **Batch**: в штатном режиме все календари аккаунта проверяются одним HTTP-запросом (multipart batch Calendar API, до 50 календарей в пачке). Первая загрузка и многостраничные ответы идут обычными запросами, до 4 параллельно.
-- **Push (необязательно)**: разверните [relay](relay/README.md) на бесплатном Cloudflare Worker и укажите его адрес в Настройки → Синхронизация. Приложение подпишет календари через `events.watch` и будет продлевать подписки. Изменения приходят за секунды, а опрос уходит в редкий режим (2 мин / 15 мин).
-- **Повторяющиеся события**: в редакторе можно выбрать «Только это» или «Вся серия». При правке серии сдвиг времени переносится на всю серию.
+| Part | Role |
+|---|---|
+| `crates/kw-core` | Everything that is not UI, with no Tauri dependency: SQLite store (WAL), Google Calendar API client and batch requests, OAuth (loopback + PKCE, tokens in the Windows Credential Manager), incremental sync and the outbox of local changes, recurrence expansion (RRULE / EXDATE and exceptions), reminder scheduler, push channels, self-update. |
+| `src-tauri` | The `kwalendar` executable: Tauri commands, tray, Windows toasts with actions, autostart, global shortcut, single instance, installer-based updates. |
+| `ui` | SolidJS + TypeScript front end; runs in a browser on demo data for development. |
+| `relay` | Optional Cloudflare Worker for Google push notifications. |
+| `docs` | [Stack and architecture notes](docs/STACK.md), the project site (GitHub Pages) and screenshots. |
+| `design` | Logo sources and the [style guide](design/STYLE.md). |
 
-## Тесты
+## License
 
-`cargo test -p kw-core` запускает 14 тестов, включая сквозные тесты через настоящий HTTP против поддельного Google (`fake_google.rs`):
+Licensed under either of
 
-- OAuth: loopback, PKCE, обмен кода, keyring, обновление токена;
-- первая и инкрементальная синхронизация, batch, уведомление о переносе;
-- outbox: создание с Meet, конфликт 412 (побеждает сервер), удаление вхождения серии, повторная синхронизация после 410;
-- push: подписка календарей и пробуждение по сигналу relay.
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
 
-## Обновления и релизы
+at your option. Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as
+above, without any additional terms or conditions.
 
-Kwalendar сам проверяет [релизы GitHub](https://github.com/maxpowerart/Kwalendar/releases) при запуске и каждые 6 часов. Канал — `update.json` последнего релиза. Работает так же, как в GitKwaken:
+The code is AI-generated (see the note at the top). In some jurisdictions purely
+machine-generated material may not be eligible for copyright; the licenses above apply to
+whatever rights exist in it and, either way, grant you the same freedoms.
 
-- В заголовке окна появляется «Обновление X.Y.Z». Диалог показывает раздел CHANGELOG и предлагает «Обновить и перезапустить», «Пропустить версию» или «Позже».
-- Установщик скачивается и проверяется по SHA-256. Kwalendar закрывается, тихо ставит новую версию и запускается снова. Аккаунты, настройки и локальная база не трогаются.
-- **Настройки → Обновления → Установить другую версию** показывает список релизов с датами. Можно откатиться на старую версию: приложение сначала удалит текущую, данные при этом сохранятся.
-- **Отзыв релиза:** Actions → *Withdraw release* → версия и причина. Релиз помечается «(withdrawn)», канал возвращается на последнюю хорошую версию. У всех, кто уже стоит на отозванной версии, появится предложение перейти на неё с указанием причины. *restore* отменяет отзыв.
+### Third-party software
 
-Как выпустить версию:
+Kwalendar depends on Rust crates (Tauri, reqwest, rusqlite with a bundled SQLite, rrule, chrono,
+keyring and others) and npm packages (SolidJS, chrono-node, Tauri API), used unmodified under
+their own permissive licenses (MIT, Apache-2.0, BSD, ISC, Zlib and similar). The Fredoka font
+(SIL Open Font License 1.1) is embedded for the wordmark.
 
-1. Поднимите `version` в `src-tauri/tauri.conf.json` (и, для порядка, в `Cargo.toml` и `package.json`).
-2. Добавьте раздел `## X.Y.Z` в [CHANGELOG.md](CHANGELOG.md).
-3. Выполните:
-   ```bash
-   git tag vX.Y.Z && git push origin main vX.Y.Z
-   ```
-   Workflow *Release* прогонит тесты, соберёт NSIS-установщик и опубликует релиз с `update.json`.
+### Trademarks
 
-## Что дальше
-
-- Подпись установщика и автообновление (нужен сертификат подписи кода).
-- Светлая тема и новый фирменный стиль по мокапам.
+Kwalendar is an independent project, not affiliated with or endorsed by Google or Microsoft.
+Google Calendar, Google Meet and Google Workspace are trademarks of Google LLC; Windows and Outlook
+are trademarks of Microsoft Corporation. Product names are used only to describe compatibility.

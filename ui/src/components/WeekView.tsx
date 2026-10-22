@@ -37,7 +37,9 @@ export function WeekView() {
 
   onMount(() => {
     const cfgStart = store.snap()?.config.dayStartHour ?? 8;
-    const h = todayIdx() >= 0 ? Math.max(0, Math.min(cfgStart, Math.floor(nowMin() / 60) - 2)) : cfgStart;
+    // Open at the start of the working day; follow "now" only once it would be below the fold.
+    const nowH = Math.floor(nowMin() / 60);
+    const h = todayIdx() >= 0 && nowH > cfgStart + 8 ? Math.min(nowH - 4, 14) : cfgStart;
     scrollEl.scrollTop = px(h * 60) - 4;
     const measure = () => setSbw(scrollEl.offsetWidth - scrollEl.clientWidth);
     measure();
