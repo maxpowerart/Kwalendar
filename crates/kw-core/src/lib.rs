@@ -6,6 +6,7 @@ pub mod db;
 pub mod google;
 pub mod models;
 pub mod recurrence;
+mod push;
 mod reminders;
 mod sync;
 mod writes;
@@ -44,6 +45,11 @@ pub struct Core {
     /// Set by sync when local data changed; flushed as one UI refresh per sync pass.
     dirty: AtomicBool,
     last_focus_sync: AtomicI64,
+    /// Overridable for tests and proxies (`KW_GOOGLE_API_BASE`, `KW_GOOGLE_TOKEN_URL`).
+    pub(crate) api_base: String,
+    pub(crate) token_url: String,
+    pub(crate) userinfo_url: String,
+    push_ok: AtomicBool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -54,6 +60,7 @@ pub struct Snapshot {
     pub config: Config,
     pub sync: SyncStatus,
     pub muted_until: i64,
+    pub push_active: bool,
 }
 
 impl Core {
@@ -86,6 +93,10 @@ impl Core {
             muted_until: AtomicI64::new(0),
             dirty: AtomicBool::new(false),
             last_focus_sync: AtomicI64::new(0),
+            api_base: std::env::var("KW_GOOGLE_API_BASE").unwrap_or_else(|_| google::DEFAULT_API.into()),
+            token_url: std::env::var("KW_GOOGLE_TOKEN_URL").unwrap_or_else(|_| auth::TOKEN_URL.into()),
+            userinfo_url: std::env::var("KW_GOOGLE_USERINFO_URL").unwrap_or_else(|_| auth::USERINFO_URL.into()),
+            push_ok: AtomicBool::new(false),
         })
     }
 
@@ -93,7 +104,10 @@ impl Core {
         self.config.read().unwrap().clone()
     }
 
-    pub fn set_config(&self, cfg: Config) -> Result<()> {
+    pub fn set_config(&self, mut cfg: Config) -> Result<()> {
+        if !cfg.relay_url.trim().is_empty() && cfg.relay_key.is_empty() {
+            cfg.relay_key = uuid::Uuid::new_v4().simple().to_string();
+        }
         cfg.save(&self.dir)?;
         *self.config.write().unwrap() = Config::load(&self.dir);
         self.reminders.invalidate();
@@ -154,6 +168,7 @@ impl Core {
             config,
             sync: self.sync_status(),
             muted_until: self.muted_until.load(Ordering::Relaxed),
+            push_active: self.push_active(),
         })
     }
 
@@ -207,6 +222,8 @@ impl Core {
         }
         let li = auth::login(
             &self.http,
+            &self.token_url,
+            &self.userinfo_url,
             cfg.google_client_id.trim(),
             cfg.google_client_secret.trim(),
             hint.as_deref(),
@@ -247,7 +264,12 @@ impl Core {
         loop {
             self.sync_all().await;
             let cfg = self.config();
-            let secs = if self.focused.load(Ordering::Relaxed) { cfg.poll_focused_secs } else { cfg.poll_background_secs };
+            let focused = self.focused.load(Ordering::Relaxed);
+            let mut secs = if focused { cfg.poll_focused_secs } else { cfg.poll_background_secs };
+            if self.push_active() {
+                // Push wakes us on changes; polling is only a safety net.
+                secs = secs.max(if focused { 120 } else { 900 });
+            }
             tokio::select! {
                 _ = tokio::time::sleep(Duration::from_secs(secs)) => {}
                 _ = self.trigger.notified() => {}
@@ -274,7 +296,21 @@ impl Core {
 
 #[cfg(test)]
 pub(crate) fn test_core() -> Arc<Core> {
+    test_core_with(None, Box::new(|_| {}))
+}
+
+#[cfg(test)]
+pub(crate) fn test_core_with(api_base: Option<String>, emit: Emitter) -> Arc<Core> {
     let dir = std::env::temp_dir().join(format!("kw-test-{}", uuid::Uuid::new_v4().simple()));
     std::fs::create_dir_all(&dir).unwrap();
-    Arc::new(Core::with_db(Db::open_in_memory().unwrap(), &dir, Box::new(|_| {})).unwrap())
+    let mut core = Core::with_db(Db::open_in_memory().unwrap(), &dir, emit).unwrap();
+    if let Some(b) = api_base {
+        core.api_base = b;
+    }
+    Arc::new(core)
 }
+
+#[cfg(test)]
+mod fake_google;
+#[cfg(test)]
+mod e2e_tests;

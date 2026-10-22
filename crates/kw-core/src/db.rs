@@ -115,6 +115,14 @@ impl Db {
             conn.execute_batch(SCHEMA_V1)?;
             conn.execute_batch("PRAGMA user_version = 1")?;
         }
+        if version < 2 {
+            conn.execute_batch(
+                "ALTER TABLE calendars ADD COLUMN watch_id TEXT;
+                 ALTER TABLE calendars ADD COLUMN watch_resource TEXT;
+                 ALTER TABLE calendars ADD COLUMN watch_expires INTEGER;
+                 PRAGMA user_version = 2;",
+            )?;
+        }
         Ok(Self { conn: Mutex::new(conn) })
     }
 
@@ -568,6 +576,26 @@ impl Db {
         let c = self.conn();
         c.execute("INSERT OR IGNORE INTO fired(key, at) VALUES(?1, ?2)", params![key, at])?;
         c.execute("DELETE FROM fired WHERE at < ?1", [at - 3 * 86400])?;
+        Ok(())
+    }
+}
+
+/// Push channel bookkeeping (events.watch).
+impl Db {
+    pub fn watches(&self, account: &str) -> Result<Vec<(String, Option<String>, Option<String>, Option<i64>)>> {
+        let c = self.conn();
+        let mut st = c.prepare("SELECT id, watch_id, watch_resource, watch_expires FROM calendars WHERE account_id = ?1")?;
+        let rows = st
+            .query_map([account], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    pub fn set_watch(&self, account: &str, cal: &str, id: Option<&str>, resource: Option<&str>, expires: Option<i64>) -> Result<()> {
+        self.conn().execute(
+            "UPDATE calendars SET watch_id = ?3, watch_resource = ?4, watch_expires = ?5 WHERE account_id = ?1 AND id = ?2",
+            params![account, cal, id, resource, expires],
+        )?;
         Ok(())
     }
 }

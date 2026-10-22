@@ -178,6 +178,21 @@ export function Settings() {
                     <For each={[60, 180, 300, 600, 900]}>{(s) => <option value={s}>каждые {s / 60} мин</option>}</For>
                   </select>
                 </div>
+                <div class="set" style={{ 'flex-wrap': 'wrap' }}>
+                  <div class="l">
+                    <p>Push-relay {snap()!.pushActive ? <span style={{ color: 'var(--ok)' }}>· активен</span> : cfg().relayUrl ? <span style={{ color: 'var(--warn)' }}>· нет связи</span> : null}</p>
+                    <p>Google сам сообщает об изменениях — за секунды, опрос становится редким. Развёртывание: папка <code class="code">relay/</code>, бесплатный Cloudflare Worker</p>
+                  </div>
+                  <input
+                    class="inp"
+                    style={{ width: '320px' }}
+                    placeholder="https://kwalendar-relay.<имя>.workers.dev"
+                    value={cfg().relayUrl}
+                    onChange={(e) => patch({ relayUrl: e.currentTarget.value.trim() })}
+                    aria-label="Адрес push-relay"
+                    spellcheck={false}
+                  />
+                </div>
                 <div class="set">
                   <div class="l"><p>Офлайн-изменения</p><p>Правки сохраняются локально и уходят при появлении сети</p></div>
                   <span class="muted">{snap()!.sync.pending ? `в очереди: ${snap()!.sync.pending}` : 'очередь пуста'}</span>

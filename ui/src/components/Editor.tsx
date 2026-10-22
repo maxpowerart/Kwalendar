@@ -36,6 +36,8 @@ export function Editor(props: { draft: Draft }) {
   const [attendees, setAttendees] = createSignal(d.attendees);
   const [meet, setMeet] = createSignal(d.addMeet);
   const [busy, setBusy] = createSignal(false);
+  const recurring = d.mode === 'edit' && !!d.source?.recurring;
+  const [scope, setScope] = createSignal<'this' | 'series'>('this');
   let titleEl!: HTMLInputElement;
 
   onMount(() => titleEl.focus());
@@ -104,7 +106,9 @@ export function Editor(props: { draft: Draft }) {
     const ok =
       d.mode === 'create'
         ? await store.run(api.createEvent(input))
-        : await store.run(api.updateEvent(targetOf(d.source!), input).then(() => true));
+        : await store.run(
+            (scope() === 'series' ? api.updateSeries(targetOf(d.source!), input) : api.updateEvent(targetOf(d.source!), input)).then(() => true),
+          );
     setBusy(false);
     if (ok !== undefined) store.setDraft(null);
   }
@@ -124,8 +128,18 @@ export function Editor(props: { draft: Draft }) {
       <div class="dialog editor" role="dialog" aria-label={d.mode === 'create' ? 'Новое событие' : 'Изменить событие'} onKeyDown={onKey}>
         <div class="ed-head">
           <span class="lbl" style={{ flex: 1 }}>
-            {d.mode === 'create' ? 'Новое событие' : d.source?.recurring ? 'Изменить это событие серии' : 'Изменить событие'}
+            {d.mode === 'create' ? 'Новое событие' : 'Изменить событие'}
           </span>
+          <Show when={recurring}>
+            <div class="seg" role="group" aria-label="Что изменить" style={{ flex: '0 0 auto' }}>
+              <button classList={{ on: scope() === 'this' }} aria-pressed={scope() === 'this'} onClick={() => setScope('this')}>
+                Только это
+              </button>
+              <button classList={{ on: scope() === 'series' }} aria-pressed={scope() === 'series'} onClick={() => setScope('series')}>
+                Вся серия
+              </button>
+            </div>
+          </Show>
           <button class="ib" aria-label="Закрыть" onClick={() => store.setDraft(null)}>
             {I.close({ size: 15 })}
           </button>

@@ -14,8 +14,8 @@ use tokio::net::TcpListener;
 use crate::google::ApiError;
 
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
-const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
-const USERINFO_URL: &str = "https://openidconnect.googleapis.com/v1/userinfo";
+pub const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
+pub const USERINFO_URL: &str = "https://openidconnect.googleapis.com/v1/userinfo";
 const SCOPES: &str = "openid email profile https://www.googleapis.com/auth/calendar";
 const KEYRING_SERVICE: &str = "kwalendar";
 
@@ -72,6 +72,8 @@ pub fn delete_refresh_token(account: &str) {
 /// Runs the full interactive sign-in. `open_url` must open the system browser.
 pub async fn login(
     http: &Client,
+    token_url: &str,
+    userinfo_url: &str,
     client_id: &str,
     client_secret: &str,
     login_hint: Option<&str>,
@@ -102,7 +104,7 @@ pub async fn login(
         .map_err(|_| anyhow!("Время входа истекло"))??;
 
     let resp = http
-        .post(TOKEN_URL)
+        .post(token_url)
         .form(&[
             ("client_id", client_id),
             ("client_secret", client_secret),
@@ -118,7 +120,7 @@ pub async fn login(
     }
     let tok: TokenResponse = resp.json().await?;
     let user: UserInfo = http
-        .get(USERINFO_URL)
+        .get(userinfo_url)
         .bearer_auth(&tok.access_token)
         .send()
         .await?
@@ -185,12 +187,12 @@ async fn wait_for_code(listener: &TcpListener, state: &str) -> Result<String> {
 }
 
 /// Exchanges the stored refresh token for a fresh access token.
-pub async fn refresh(http: &Client, client_id: &str, client_secret: &str, account: &str) -> Result<(String, i64), ApiError> {
+pub async fn refresh(http: &Client, token_url: &str, client_id: &str, client_secret: &str, account: &str) -> Result<(String, i64), ApiError> {
     let refresh = load_refresh_token(account)
         .map_err(|e| ApiError::Other(e.to_string()))?
         .ok_or(ApiError::Revoked)?;
     let resp = http
-        .post(TOKEN_URL)
+        .post(token_url)
         .form(&[
             ("client_id", client_id),
             ("client_secret", client_secret),

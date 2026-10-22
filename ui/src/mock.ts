@@ -178,9 +178,12 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
           view: 'week',
           sidebar: true,
           dayStartHour: 8,
+          relayUrl: '',
+          relayKey: '',
         },
         sync: { state: 'idle', lastSync: Date.now() - 12_000, pending: 0, message: null },
         mutedUntil: 0,
+        pushActive: false,
       };
       return s;
     }
@@ -205,6 +208,7 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
       changed();
       return inst.key;
     }
+    case 'update_series':
     case 'update_event': {
       const t: EditTarget = args.target;
       const key = `${t.accountId}|${t.calendarId}|${t.eventId}`;

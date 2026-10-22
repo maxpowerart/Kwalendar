@@ -72,6 +72,8 @@ export interface Config {
   view: string;
   sidebar: boolean;
   dayStartHour: number;
+  relayUrl: string;
+  relayKey: string;
 }
 
 export interface SyncStatus {
@@ -87,6 +89,7 @@ export interface Snapshot {
   config: Config;
   sync: SyncStatus;
   mutedUntil: number;
+  pushActive: boolean;
 }
 
 export interface EventInput {
@@ -156,6 +159,7 @@ export const api = {
   syncNow: () => call<void>('sync_now'),
   createEvent: (input: EventInput) => call<string>('create_event', { input }),
   updateEvent: (target: EditTarget, input: EventInput) => call<void>('update_event', { target, input }),
+  updateSeries: (target: EditTarget, input: EventInput) => call<void>('update_series', { target, input }),
   moveEvent: (target: EditTarget, start: number, end: number) => call<void>('move_event', { target, start, end }),
   deleteEvent: (target: EditTarget, scope: 'this' | 'series') => call<void>('delete_event', { target, scope }),
   respond: (target: EditTarget, response: string) => call<void>('respond', { target, response }),

@@ -77,6 +77,11 @@ fn update_event(s: State<AppState>, target: EditTarget, input: EventInput) -> Re
 }
 
 #[tauri::command]
+fn update_series(s: State<AppState>, target: EditTarget, input: EventInput) -> Res<()> {
+    s.core.update_series(target, input).map_err(err)
+}
+
+#[tauri::command]
 fn move_event(s: State<AppState>, target: EditTarget, start: i64, end: i64) -> Res<()> {
     s.core.move_event(target, start, end).map_err(err)
 }
@@ -299,6 +304,7 @@ pub fn run() {
 
             tauri::async_runtime::spawn(core.clone().run_sync_loop());
             tauri::async_runtime::spawn(core.clone().run_reminder_loop());
+            tauri::async_runtime::spawn(core.clone().run_push_loop());
 
             // Safety net: show the window even if the UI never reports ready.
             if !start_hidden {
@@ -341,6 +347,7 @@ pub fn run() {
             sync_now,
             create_event,
             update_event,
+            update_series,
             move_event,
             delete_event,
             respond,

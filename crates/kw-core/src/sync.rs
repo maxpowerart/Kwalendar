@@ -26,7 +26,7 @@ impl Core {
         }
         let cfg = self.config();
         let (tok, exp) =
-            auth::refresh(&self.http, cfg.google_client_id.trim(), cfg.google_client_secret.trim(), account).await?;
+            auth::refresh(&self.http, &self.token_url, cfg.google_client_id.trim(), cfg.google_client_secret.trim(), account).await?;
         self.tokens.lock().unwrap().insert(account.to_string(), (tok.clone(), exp));
         Ok(tok)
     }
@@ -113,8 +113,17 @@ impl Core {
         let token = self.access_token(&acc.id).await?;
         self.push_outbox(&acc.id, &token).await?;
         self.sync_calendar_list(&acc.id, &token).await?;
+        self.ensure_watches(&acc.id, &token).await?;
 
-        let cals = self.db.calendar_ids(&acc.id).map_err(other)?;
+        let all = self.db.calendar_ids(&acc.id).map_err(other)?;
+        let (incremental, fresh): (Vec<_>, Vec<_>) = all.into_iter().partition(|(_, t)| t.is_some());
+        // Steady state: one batched round trip checks every calendar of the account.
+        let mut cals = fresh;
+        if incremental.len() >= 2 {
+            cals.extend(self.sync_batch(&acc.id, incremental, &token).await?);
+        } else {
+            cals.extend(incremental);
+        }
         let results: Vec<Result<(), ApiError>> = futures::stream::iter(cals)
             .map(|(cal, sync_token)| {
                 let token = token.clone();
@@ -133,12 +142,59 @@ impl Core {
         Ok(())
     }
 
+    /// Applies single-page incremental results from batches of up to 50 calendars.
+    /// Returns calendars that still need the regular path (more pages, expired token, part errors).
+    async fn sync_batch(
+        &self,
+        account: &str,
+        cals: Vec<(String, Option<String>)>,
+        token: &str,
+    ) -> Result<Vec<(String, Option<String>)>, ApiError> {
+        let mut rest = Vec::new();
+        let notify = self.config().notify_changes;
+        for chunk in cals.chunks(50) {
+            let reqs: Vec<(String, String)> =
+                chunk.iter().map(|(c, t)| (c.clone(), t.clone().unwrap_or_default())).collect();
+            let results = match google::batch_events(&self.http, &self.api_base, token, &reqs).await {
+                Ok(r) => r,
+                Err(ApiError::Unauthorized) => return Err(ApiError::Unauthorized),
+                Err(ApiError::Network(e)) => return Err(ApiError::Network(e)),
+                Err(e) => {
+                    log::warn!("batch failed ({e}), falling back to per-calendar requests");
+                    rest.extend(chunk.iter().cloned());
+                    continue;
+                }
+            };
+            for ((cal, st), res) in chunk.iter().zip(results) {
+                match res {
+                    Ok(page) if page.next_page_token.is_none() => {
+                        if !page.items.is_empty() {
+                            self.dirty.store(true, Ordering::Relaxed);
+                            let notices = self.apply_items(account, cal, &page.items, true).map_err(other)?;
+                            if notify {
+                                notices.into_iter().for_each(|n| self.notice(n));
+                            }
+                        }
+                        if let Some(next) = page.next_sync_token {
+                            self.db.set_sync_token(account, cal, Some(&next)).map_err(other)?;
+                        }
+                    }
+                    Ok(_) | Err(ApiError::Gone) | Err(ApiError::Other(_)) | Err(ApiError::NotFound) => {
+                        rest.push((cal.clone(), st.clone()))
+                    }
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+        Ok(rest)
+    }
+
     async fn sync_calendar_list(&self, account: &str, token: &str) -> Result<(), ApiError> {
         let sync_token = self.db.cal_list_token(account).map_err(other)?;
-        let (items, next) = match google::calendar_list(&self.http, token, sync_token.as_deref()).await {
+        let (items, next) = match google::calendar_list(&self.http, &self.api_base, token, sync_token.as_deref()).await {
             Err(ApiError::Gone) => {
                 self.db.set_cal_list_token(account, None).map_err(other)?;
-                google::calendar_list(&self.http, token, None).await?
+                google::calendar_list(&self.http, &self.api_base, token, None).await?
             }
             r => r?,
         };
@@ -230,7 +286,7 @@ impl Core {
         let mut page: Option<String> = None;
         let mut changed = false;
         loop {
-            let p = google::events_page(&self.http, token, cal, sync_token, window, page.as_deref()).await?;
+            let p = google::events_page(&self.http, &self.api_base, token, cal, sync_token, window, page.as_deref()).await?;
             if !p.items.is_empty() {
                 changed = true;
                 let notices = self.apply_items(account, cal, &p.items, incremental).map_err(other)?;
@@ -322,11 +378,11 @@ impl Core {
             let send = payload["send"].as_str().unwrap_or("all");
             let (cal, id) = (item.calendar_id.as_str(), item.event_id.as_str());
             let res = match item.op.as_str() {
-                "insert" => google::insert_event(&self.http, token, cal, body).await.map(Some),
-                "patch" => google::patch_event(&self.http, token, cal, id, body, item.etag.as_deref(), send)
+                "insert" => google::insert_event(&self.http, &self.api_base, token, cal, body).await.map(Some),
+                "patch" => google::patch_event(&self.http, &self.api_base, token, cal, id, body, item.etag.as_deref(), send)
                     .await
                     .map(Some),
-                "delete" => google::delete_event(&self.http, token, cal, id).await.map(|_| None),
+                "delete" => google::delete_event(&self.http, &self.api_base, token, cal, id).await.map(|_| None),
                 _ => Ok(None),
             };
             touched = true;
@@ -344,7 +400,7 @@ impl Core {
                         .flatten()
                         .and_then(|e| e.summary)
                         .unwrap_or_default();
-                    if let Ok(v) = google::get_event(&self.http, token, cal, id).await {
+                    if let Ok(v) = google::get_event(&self.http, &self.api_base, token, cal, id).await {
                         if let Some(row) = google::parse_event(account, cal, &v) {
                             self.db.upsert_event(&row).map_err(other)?;
                         }
@@ -361,7 +417,7 @@ impl Core {
                 Err(ApiError::Other(msg)) if item.op == "insert" && msg.contains("HTTP 409") => {
                     // Retried insert with our client-generated id: already there.
                     self.db.outbox_done(item.id).map_err(other)?;
-                    if let Ok(v) = google::get_event(&self.http, token, cal, id).await {
+                    if let Ok(v) = google::get_event(&self.http, &self.api_base, token, cal, id).await {
                         self.after_push(account, "insert", cal, id, Some(v)).map_err(other)?;
                     }
                 }

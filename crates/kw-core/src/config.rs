@@ -16,6 +16,10 @@ pub struct Config {
     pub view: String,
     pub sidebar: bool,
     pub day_start_hour: u32,
+    /// Optional push relay (see `relay/`). Empty = polling only.
+    pub relay_url: String,
+    /// Secret channel key shared with the relay; generated on first use.
+    pub relay_key: String,
 }
 
 impl Default for Config {
@@ -30,6 +34,8 @@ impl Default for Config {
             view: "week".into(),
             sidebar: true,
             day_start_hour: 8,
+            relay_url: String::new(),
+            relay_key: String::new(),
         }
     }
 }

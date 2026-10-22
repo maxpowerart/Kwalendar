@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 
 use crate::models::{Attendee, EventRow};
 
-pub const API: &str = "https://www.googleapis.com/calendar/v3";
+pub const DEFAULT_API: &str = "https://www.googleapis.com/calendar/v3";
 
 /// Partial-response field mask: only what the app renders.
 const EVENT_FIELDS: &str = "id,etag,status,summary,description,location,start,end,recurrence,recurringEventId,originalStartTime,hangoutLink,conferenceData(entryPoints(entryPointType,uri)),htmlLink,organizer(email,displayName,self),attendees(email,displayName,responseStatus,self,organizer,optional),reminders,colorId,updated";
@@ -71,15 +71,124 @@ pub async fn request(
         return serde_json::from_str(&text).map_err(|e| ApiError::Other(e.to_string()));
     }
     let text = resp.text().await.unwrap_or_default();
-    Err(match status {
-        StatusCode::UNAUTHORIZED => ApiError::Unauthorized,
-        StatusCode::GONE => ApiError::Gone,
-        StatusCode::PRECONDITION_FAILED => ApiError::PreconditionFailed,
-        StatusCode::NOT_FOUND => ApiError::NotFound,
-        StatusCode::TOO_MANY_REQUESTS => ApiError::RateLimited,
-        StatusCode::FORBIDDEN if text.contains("ateLimitExceeded") => ApiError::RateLimited,
-        _ => ApiError::Other(format!("HTTP {}: {}", status.as_u16(), truncate(&text, 300))),
-    })
+    Err(status_error(status.as_u16(), &text))
+}
+
+fn status_error(status: u16, text: &str) -> ApiError {
+    match status {
+        401 => ApiError::Unauthorized,
+        410 => ApiError::Gone,
+        412 => ApiError::PreconditionFailed,
+        404 => ApiError::NotFound,
+        429 => ApiError::RateLimited,
+        403 if text.contains("ateLimitExceeded") => ApiError::RateLimited,
+        _ => ApiError::Other(format!("HTTP {status}: {}", truncate(text, 300))),
+    }
+}
+
+/// Incremental `events.list` for many calendars in one HTTP round trip (Calendar API batch, ≤ 50 parts).
+/// The outer error is for the batch call itself; each part carries its own result.
+pub async fn batch_events(
+    http: &Client,
+    base: &str,
+    token: &str,
+    reqs: &[(String, String)],
+) -> Result<Vec<Result<EventsPage, ApiError>>, ApiError> {
+    use std::fmt::Write;
+    let Some(idx) = base.find("/calendar/v3") else {
+        return Err(ApiError::Other("batch: unexpected API base".into()));
+    };
+    let batch_url = format!("{}/batch{}", &base[..idx], &base[idx..]);
+    let prefix = &base[idx..];
+    let boundary = "kwalendar_batch";
+    let fields = enc(&format!("nextPageToken,nextSyncToken,items({EVENT_FIELDS})"));
+    let mut body = String::new();
+    for (i, (cal, st)) in reqs.iter().enumerate() {
+        let _ = write!(
+            body,
+            "--{boundary}\r\nContent-Type: application/http\r\nContent-ID: <item{i}>\r\n\r\nGET {prefix}/calendars/{}/events?maxResults=2500&singleEvents=false&syncToken={}&fields={fields}\r\n\r\n",
+            enc(cal),
+            enc(st)
+        );
+    }
+    let _ = write!(body, "--{boundary}--\r\n");
+    let resp = http
+        .post(&batch_url)
+        .bearer_auth(token)
+        .header(reqwest::header::CONTENT_TYPE, format!("multipart/mixed; boundary={boundary}"))
+        .body(body)
+        .send()
+        .await?;
+    let status = resp.status();
+    let ct = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    let text = resp.text().await?;
+    if !status.is_success() {
+        return Err(status_error(status.as_u16(), &text));
+    }
+    let resp_boundary = ct
+        .split(';')
+        .find_map(|p| p.trim().strip_prefix("boundary="))
+        .map(|b| b.trim_matches('"').to_string())
+        .ok_or_else(|| ApiError::Other("batch: no boundary".into()))?;
+
+    let mut out: Vec<Result<EventsPage, ApiError>> =
+        (0..reqs.len()).map(|_| Err(ApiError::Other("batch: part missing".into()))).collect();
+    for part in parse_multipart(&text, &resp_boundary) {
+        let Some(i) = part.content_id.and_then(|id| id.rsplit("item").next().and_then(|n| n.parse::<usize>().ok()))
+        else {
+            continue;
+        };
+        if i >= out.len() {
+            continue;
+        }
+        out[i] = if (200..300).contains(&part.status) {
+            serde_json::from_str::<Value>(&part.body)
+                .map(|v| EventsPage {
+                    items: v["items"].as_array().cloned().unwrap_or_default(),
+                    next_page_token: v["nextPageToken"].as_str().map(String::from),
+                    next_sync_token: v["nextSyncToken"].as_str().map(String::from),
+                })
+                .map_err(|e| ApiError::Other(format!("batch part: {e}")))
+        } else {
+            Err(status_error(part.status, &part.body))
+        };
+    }
+    Ok(out)
+}
+
+struct Part {
+    content_id: Option<String>,
+    status: u16,
+    body: String,
+}
+
+fn parse_multipart(text: &str, boundary: &str) -> Vec<Part> {
+    let text = text.replace("\r\n", "\n");
+    let mut parts = Vec::new();
+    for chunk in text.split(&format!("--{boundary}")) {
+        let chunk = chunk.trim_start_matches('\n');
+        if chunk.starts_with("--") || chunk.trim().is_empty() {
+            continue;
+        }
+        let Some((outer, inner)) = chunk.split_once("\n\n") else { continue };
+        let content_id = outer
+            .lines()
+            .find(|l| l.to_ascii_lowercase().starts_with("content-id:"))
+            .map(|l| l[11..].trim().trim_matches(['<', '>']).to_string());
+        let status = inner
+            .split_whitespace()
+            .nth(1)
+            .and_then(|s| s.parse::<u16>().ok())
+            .unwrap_or(0);
+        let body = inner.split_once("\n\n").map(|(_, b)| b.trim().to_string()).unwrap_or_default();
+        parts.push(Part { content_id, status, body });
+    }
+    parts
 }
 
 fn truncate(s: &str, n: usize) -> String {
@@ -92,13 +201,14 @@ fn enc(s: &str) -> String {
 
 pub async fn calendar_list(
     http: &Client,
+    base: &str,
     token: &str,
     sync_token: Option<&str>,
 ) -> Result<(Vec<Value>, Option<String>), ApiError> {
     let mut items = Vec::new();
     let mut page: Option<String> = None;
     loop {
-        let mut url = format!("{API}/users/me/calendarList?maxResults=250&showDeleted=true");
+        let mut url = format!("{base}/users/me/calendarList?maxResults=250&showDeleted=true");
         if let Some(t) = sync_token {
             url.push_str(&format!("&syncToken={}", enc(t)));
         }
@@ -119,6 +229,7 @@ pub async fn calendar_list(
 /// One page of events. With `sync_token` → incremental; with `window` → bounded quick fetch (no sync token).
 pub async fn events_page(
     http: &Client,
+    base: &str,
     token: &str,
     calendar_id: &str,
     sync_token: Option<&str>,
@@ -126,7 +237,7 @@ pub async fn events_page(
     page_token: Option<&str>,
 ) -> Result<EventsPage, ApiError> {
     let mut url = format!(
-        "{API}/calendars/{}/events?maxResults=2500&singleEvents=false&fields={}",
+        "{base}/calendars/{}/events?maxResults=2500&singleEvents=false&fields={}",
         enc(calendar_id),
         enc(&format!("nextPageToken,nextSyncToken,items({EVENT_FIELDS})"))
     );
@@ -146,14 +257,14 @@ pub async fn events_page(
     })
 }
 
-pub async fn get_event(http: &Client, token: &str, cal: &str, id: &str) -> Result<Value, ApiError> {
-    let url = format!("{API}/calendars/{}/events/{}?fields={}", enc(cal), enc(id), enc(EVENT_FIELDS));
+pub async fn get_event(http: &Client, base: &str, token: &str, cal: &str, id: &str) -> Result<Value, ApiError> {
+    let url = format!("{base}/calendars/{}/events/{}?fields={}", enc(cal), enc(id), enc(EVENT_FIELDS));
     request(http, token, Method::GET, &url, None, None).await
 }
 
-pub async fn insert_event(http: &Client, token: &str, cal: &str, body: &Value) -> Result<Value, ApiError> {
+pub async fn insert_event(http: &Client, base: &str, token: &str, cal: &str, body: &Value) -> Result<Value, ApiError> {
     let url = format!(
-        "{API}/calendars/{}/events?conferenceDataVersion=1&sendUpdates=all&fields={}",
+        "{base}/calendars/{}/events?conferenceDataVersion=1&sendUpdates=all&fields={}",
         enc(cal),
         enc(EVENT_FIELDS)
     );
@@ -162,6 +273,7 @@ pub async fn insert_event(http: &Client, token: &str, cal: &str, body: &Value) -
 
 pub async fn patch_event(
     http: &Client,
+    base: &str,
     token: &str,
     cal: &str,
     id: &str,
@@ -170,7 +282,7 @@ pub async fn patch_event(
     send_updates: &str,
 ) -> Result<Value, ApiError> {
     let url = format!(
-        "{API}/calendars/{}/events/{}?conferenceDataVersion=1&sendUpdates={}&fields={}",
+        "{base}/calendars/{}/events/{}?conferenceDataVersion=1&sendUpdates={}&fields={}",
         enc(cal),
         enc(id),
         send_updates,
@@ -179,8 +291,28 @@ pub async fn patch_event(
     request(http, token, Method::PATCH, &url, Some(body), etag).await
 }
 
-pub async fn delete_event(http: &Client, token: &str, cal: &str, id: &str) -> Result<(), ApiError> {
-    let url = format!("{API}/calendars/{}/events/{}?sendUpdates=all", enc(cal), enc(id));
+/// Subscribes a webhook channel to changes of a calendar (push notifications).
+pub async fn watch_events(http: &Client, base: &str, token: &str, cal: &str, address: &str, channel_token: &str) -> Result<Value, ApiError> {
+    let url = format!("{base}/calendars/{}/events/watch", enc(cal));
+    let body = serde_json::json!({
+        "id": uuid::Uuid::new_v4().to_string(),
+        "type": "web_hook",
+        "address": address,
+        "token": channel_token,
+        "params": {"ttl": "604800"}
+    });
+    request(http, token, Method::POST, &url, Some(&body), None).await
+}
+
+pub async fn stop_channel(http: &Client, base: &str, token: &str, id: &str, resource: &str) -> Result<(), ApiError> {
+    let url = format!("{base}/channels/stop");
+    request(http, token, Method::POST, &url, Some(&serde_json::json!({"id": id, "resourceId": resource})), None)
+        .await
+        .map(|_| ())
+}
+
+pub async fn delete_event(http: &Client, base: &str, token: &str, cal: &str, id: &str) -> Result<(), ApiError> {
+    let url = format!("{base}/calendars/{}/events/{}?sendUpdates=all", enc(cal), enc(id));
     request(http, token, Method::DELETE, &url, None, None).await.map(|_| ())
 }
 

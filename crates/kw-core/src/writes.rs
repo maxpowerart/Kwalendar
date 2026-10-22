@@ -238,6 +238,78 @@ impl Core {
         Ok(())
     }
 
+    /// Edits the whole series from one of its occurrences: fields apply to the master, and the
+    /// time change made to this occurrence (shift + new duration) is applied to the series start.
+    pub fn update_series(&self, target: EditTarget, input: EventInput) -> Result<()> {
+        let cal = self.writable_calendar(&target.account_id, &target.calendar_id)?;
+        let master_id = target.master_id.clone().unwrap_or(target.event_id.clone());
+        let mut m = self
+            .db
+            .event(&target.account_id, &target.calendar_id, &master_id)?
+            .ok_or_else(|| anyhow!("серия не найдена"))?;
+        if m.recurrence.is_none() {
+            bail!("событие не повторяется");
+        }
+        let keep_times = (m.all_day, m.start_ts, m.end_ts, m.start_date.clone(), m.end_date.clone());
+        apply_input(&mut m, &input)?;
+        if input.all_day != keep_times.0 {
+            bail!("для серии нельзя переключить «весь день» — измените одно событие или создайте серию заново");
+        }
+        if input.all_day {
+            let p = |s: &str| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok();
+            let occ = target.start_date.as_deref().and_then(p);
+            let new = input.start_date.as_deref().and_then(p);
+            let (Some(ms), Some(me)) = (keep_times.3.as_deref().and_then(p), keep_times.4.as_deref().and_then(p)) else {
+                bail!("нет дат серии");
+            };
+            let shift = match (occ, new) {
+                (Some(o), Some(n)) => n - o,
+                _ => chrono::Duration::zero(),
+            };
+            let len = match (new, input.end_date.as_deref().and_then(p)) {
+                (Some(s), Some(e)) => (e - s).max(chrono::Duration::days(1)),
+                _ => me - ms,
+            };
+            m.start_date = Some((ms + shift).to_string());
+            m.end_date = Some((ms + shift + len).to_string());
+        } else {
+            let (Some(ms), Some(_)) = (keep_times.1, keep_times.2) else { bail!("нет времени серии") };
+            let occ = target.start.map(|s| s / 1000).unwrap_or(ms);
+            let new_start = input.start.map(|s| s / 1000).unwrap_or(occ);
+            let new_end = input.end.map(|e| e / 1000).unwrap_or(new_start + 3600);
+            let start = ms + (new_start - occ);
+            m.start_ts = Some(start);
+            m.end_ts = Some(start + (new_end - new_start).max(0));
+        }
+        // Recurring events need an explicit zone on start/end.
+        if m.time_zone.is_none() {
+            m.time_zone = cal.time_zone.clone().or_else(|| Some(local_tz_name()));
+        }
+        m.pending = true;
+        let (start, end) = time_json(&m);
+        let mut body = json!({
+            "summary": m.summary,
+            "location": m.location.clone().unwrap_or_default(),
+            "description": m.description.clone().unwrap_or_default(),
+            "start": start,
+            "end": end,
+            "recurrence": m.recurrence,
+            "reminders": reminders_json(m.reminders_default, &m.reminders),
+        });
+        if !m.attendees.is_empty() {
+            body["attendees"] = json!(m
+                .attendees
+                .iter()
+                .map(|a| json!({"email": a.email, "responseStatus": a.response, "optional": a.optional}))
+                .collect::<Vec<_>>());
+        }
+        self.db.upsert_event(&m)?;
+        self.queue_patch(&m, body, "all")?;
+        self.changed();
+        self.sync_now();
+        Ok(())
+    }
+
     /// Moves/resizes an occurrence (drag & drop). Times in ms.
     pub fn move_event(&self, target: EditTarget, start: i64, end: i64) -> Result<()> {
         self.writable_calendar(&target.account_id, &target.calendar_id)?;
@@ -518,5 +590,57 @@ mod tests {
         let ob = core.db.outbox_for("acc").unwrap();
         assert_eq!(ob[0].op, "delete");
         assert_eq!(ob[0].event_id, "series1_20261020T063000Z");
+    }
+
+    #[test]
+    fn series_edit_shifts_every_occurrence() {
+        let core = setup();
+        core.db
+            .upsert_event(&EventRow {
+                account_id: "acc".into(),
+                calendar_id: "cal".into(),
+                id: "s1".into(),
+                etag: Some("\"e\"".into()),
+                status: "confirmed".into(),
+                summary: Some("Стендап".into()),
+                start_ts: Some(1792391400),
+                end_ts: Some(1792393200),
+                time_zone: Some("Europe/Moscow".into()),
+                recurrence: Some(vec!["RRULE:FREQ=DAILY;COUNT=5".into()]),
+                reminders_default: true,
+                organizer_self: true,
+                ..Default::default()
+            })
+            .unwrap();
+        let from = 1792368000000;
+        let to = from + 7 * 86_400_000;
+        let second = core.instances(from, to).unwrap()[1].clone();
+        let mut inp = input();
+        inp.title = "Утренний синк".into();
+        // 09:30 → 10:00, 30 min → 45 min
+        inp.start = Some(second.start + 1_800_000);
+        inp.end = Some(second.start + 1_800_000 + 2_700_000);
+        core.update_series(
+            EditTarget {
+                account_id: "acc".into(),
+                calendar_id: "cal".into(),
+                event_id: second.event_id.clone(),
+                master_id: second.master_id.clone(),
+                start: Some(second.start),
+                start_date: None,
+            },
+            inp,
+        )
+        .unwrap();
+        let list = core.instances(from, to).unwrap();
+        assert_eq!(list.len(), 5);
+        for i in &list {
+            assert_eq!(i.title, "Утренний синк");
+            assert_eq!((i.start / 1000 - 1792391400) % 86400, 1800, "every day moved by 30 min");
+            assert_eq!(i.end - i.start, 2_700_000);
+        }
+        let ob = core.db.outbox_for("acc").unwrap();
+        assert_eq!((ob[0].op.as_str(), ob[0].event_id.as_str()), ("patch", "s1"));
+        assert!(ob[0].payload.as_ref().unwrap().contains("RRULE"));
     }
 }
