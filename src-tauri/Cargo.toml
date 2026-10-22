@@ -1,0 +1,31 @@
+[package]
+name = "kwalendar"
+version = "0.1.0"
+edition = "2021"
+description = "Kwalendar — fast desktop calendar for Google accounts"
+
+[lib]
+name = "kwalendar_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+kw-core = { path = "../crates/kw-core" }
+log = "0.4"
+env_logger = "0.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
+
+[target.'cfg(windows)'.dependencies]
+tauri-winrt-notification = "0.7"
+winreg = "0.52"
