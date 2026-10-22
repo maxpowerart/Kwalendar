@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kwalendar — fast desktop calendar for Google Calendar</title>
+<meta name="description" content="Kwalendar is a fast Windows desktop calendar for Google Calendar: several Google accounts in one window, offline access, native reminders.">
+<!-- Google Search Console ownership: replace the token below with the one Search Console gives you. -->
+<meta name="google-site-verification" content="REPLACE_WITH_SEARCH_CONSOLE_TOKEN">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root { --navy: #0F2240; --aqua: #2EC4B6; --teal: #158C82; --orange: #FF9F1C; --mint: #E6F5F4; --text: #1F2937; --muted: #5A6B86; --line: #E3E8EE; --bg: #F6F8FA; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.6 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--text); background: var(--bg); }
+  a { color: var(--teal); }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+  header { background: var(--navy); color: #fff; }
+  header .wrap { display: flex; align-items: center; gap: 12px; height: 64px; }
+  .wm { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 24px; letter-spacing: -0.01em; }
+  .wm .k { color: var(--aqua); }
+  header nav { margin-left: auto; display: flex; gap: 20px; font-size: 15px; }
+  header nav a { color: #C9D6EA; text-decoration: none; }
+  header nav a:hover { color: #fff; }
+  .hero { display: grid; grid-template-columns: 1fr 220px; gap: 40px; align-items: center; padding: 56px 0 40px; }
+  .hero h1 { font-size: 40px; line-height: 1.15; margin: 0 0 16px; color: var(--navy); }
+  .hero p { font-size: 18px; color: var(--muted); margin: 0 0 24px; }
+  .cta { display: inline-flex; align-items: center; gap: 8px; background: var(--teal); color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 6px; font-weight: 600; }
+  .cta:hover { background: #0F7A71; }
+  .hero img { width: 220px; height: 220px; }
+  h2 { color: var(--navy); font-size: 26px; margin: 48px 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 17px; color: var(--navy); }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .data { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px 24px; }
+  .data li { margin: 10px 0; }
+  code { background: var(--mint); padding: 1px 6px; border-radius: 4px; font-size: 14px; }
+  footer { margin-top: 64px; padding: 24px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  @media (max-width: 720px) { .hero { grid-template-columns: 1fr; } .hero img { width: 140px; height: 140px; } .hero h1 { font-size: 30px; } header nav { gap: 12px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <img src="assets/mark.svg" alt="" width="28" height="31">
+    <span class="wm"><span class="k">K</span>walendar</span>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#google-data">Google data</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="https://github.com/maxpowerart/Kwalendar">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <h1>A fast desktop calendar for your Google Calendar</h1>
+      <p>Kwalendar is a Windows app that shows the calendars of all your Google accounts — personal, work, family — in one window. It opens instantly, works offline and reminds you about meetings with native Windows notifications.</p>
+      <a class="cta" href="https://github.com/maxpowerart/Kwalendar/releases/latest">Download for Windows</a>
+    </div>
+    <img src="assets/icon.svg" alt="Kwalendar app icon: a frog holding a calendar">
+  </section>
+
+  <h2 id="features">What Kwalendar does</h2>
+  <div class="grid">
+    <div class="card"><h3>All accounts in one view</h3><p>Connect several Google accounts and see their calendars together in day, week, month and agenda views.</p></div>
+    <div class="card"><h3>Create and edit events</h3><p>Create, move, resize, edit and delete events, answer invitations, add Google Meet — the changes are saved to your Google Calendar.</p></div>
+    <div class="card"><h3>Reminders that work</h3><p>Windows notifications before events, with “Join” and “Snooze” buttons, plus notices when someone moves a meeting or invites you.</p></div>
+    <div class="card"><h3>Instant and offline</h3><p>A local copy of your calendars on your PC: the app opens immediately and keeps working without internet; edits are sent when you are back online.</p></div>
+    <div class="card"><h3>Quick add</h3><p>Type “Call with Peter tomorrow at 3pm for 30 min” — Kwalendar understands English and Russian.</p></div>
+    <div class="card"><h3>No servers of ours</h3><p>The app talks directly to Google. There is no Kwalendar account and no Kwalendar cloud.</p></div>
+  </div>
+
+  <h2 id="google-data">How Kwalendar uses your Google data</h2>
+  <div class="data">
+    <ul>
+      <li>Kwalendar asks for <code>https://www.googleapis.com/auth/calendar</code> to <b>show your calendars and events</b>, and to <b>create, update, delete and respond to events when you do so in the app</b>. It also uses <code>openid</code>, <code>email</code> and <code>profile</code> to show which Google account is connected.</li>
+      <li>Calendar data is stored <b>only on your computer</b>, in a local database, so the calendar opens instantly and works offline. Sign-in tokens are kept in the Windows Credential Manager.</li>
+      <li>Your data is <b>never sent to the developer or to any third party</b>, never sold, and never used for advertising or to train AI models.</li>
+      <li>You can disconnect an account in the app at any time (this deletes its local copy) and revoke access at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+    </ul>
+    <p>Details: <a href="privacy.html">Privacy Policy</a>.</p>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Kwalendar is open source: <a href="https://github.com/maxpowerart/Kwalendar">github.com/maxpowerart/Kwalendar</a> ·
+    <a href="privacy.html">Privacy Policy</a> · Contact: <a href="mailto:thepowerart@gmail.com">thepowerart@gmail.com</a>
+  </div>
+</footer>
+</body>
+</html>
