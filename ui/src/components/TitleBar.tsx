@@ -4,6 +4,7 @@ import { api, isTauri } from '../api';
 import { store } from '../store';
 import { I, WinClose, WinMax, WinMin } from '../icons';
 import { plural, time } from '../dates';
+import mark from '../assets/mark.svg';
 
 function ago(ms: number, now: number): string {
   const s = Math.max(0, Math.round((now - ms) / 1000));
@@ -47,7 +48,7 @@ export function TitleBar() {
   return (
     <header class="titlebar" data-tauri-drag-region>
       <div class="side" data-tauri-drag-region>
-        <div class="logo" data-tauri-drag-region>K</div>
+        <img src={mark} alt="" width="20" height="22" style={{ display: 'block' }} data-tauri-drag-region />
         <span style={{ 'font-weight': 600, 'letter-spacing': '-0.01em' }} data-tauri-drag-region>
           Kwalendar
         </span>

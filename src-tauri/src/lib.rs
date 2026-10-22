@@ -291,9 +291,8 @@ pub fn run() {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             let icon = dir.join("icon.png");
-            if !icon.exists() {
-                let _ = std::fs::write(&icon, include_bytes!("../icons/128x128@2x.png"));
-            }
+            // Rewritten every start so a new app icon reaches toasts too.
+            let _ = std::fs::write(&icon, include_bytes!("../icons/128x128@2x.png"));
             toast::register_aumid(Some(&icon));
 
             let handle = app.handle().clone();

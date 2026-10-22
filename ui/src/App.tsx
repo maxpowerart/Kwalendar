@@ -13,13 +13,14 @@ import { QuickAdd } from './components/QuickAdd';
 import { GoogleClientForm, Settings } from './components/Settings';
 import { I } from './icons';
 import { startOfDay } from './dates';
+import mark from './assets/mark.svg';
 
 function Onboarding() {
   const hasClient = () => !!store.snap()?.config.googleClientId;
   return (
     <div class="empty">
       <div class="box">
-        <div class="logo" style={{ width: '40px', height: '40px', 'font-size': '20px', 'border-radius': '11px' }}>K</div>
+        <img src={mark} alt="Kwalendar" width="64" height="70" />
         <h1>Подключите Google Календарь</h1>
         <Show
           when={hasClient()}
