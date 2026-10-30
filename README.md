@@ -74,7 +74,7 @@ Kwalendar*. Work accounts on Google Workspace may block apps their admin has not
 (*"You can't access this app until an admin…"*): the admin can allow Kwalendar in the Admin
 console under *Security › Access and data control › API controls › Manage third-party app access*.
 
-Your data stays on your PC: see the [Privacy Policy](https://maxpowerart.github.io/Kwalendar/privacy.html).
+Your data stays on your PC: see the [Privacy Policy](https://kwasoftware.org/Kwalendar/privacy.html).
 
 ## Updates and going back
 
