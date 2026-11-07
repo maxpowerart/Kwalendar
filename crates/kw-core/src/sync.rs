@@ -62,7 +62,7 @@ impl Core {
                     let _ = self.db.set_account_status(&acc.id, "offline", Some(&e));
                 }
                 Err(ApiError::Revoked) => {
-                    let _ = self.db.set_account_status(&acc.id, "reauth", Some("Доступ отозван — войдите снова"));
+                    let _ = self.db.set_account_status(&acc.id, "reauth", Some(&crate::tr!("Доступ отозван — войдите снова", "Access revoked — sign in again")));
                     self.notice(Notice::Reauth { email: acc.email.clone() });
                 }
                 Err(e) => {
@@ -430,7 +430,7 @@ impl Core {
                         .unwrap_or(0);
                     if attempts >= 5 {
                         self.db.outbox_done(item.id).map_err(other)?;
-                        self.notice(Notice::Error { message: format!("Не удалось сохранить изменение: {msg}") });
+                        self.notice(Notice::Error { message: crate::tr!("Не удалось сохранить изменение: {msg}", "Could not save a change: {msg}") });
                     }
                     break; // keep order: later edits depend on this one
                 }
@@ -472,7 +472,7 @@ impl Core {
 }
 
 fn detect_notice(existing: Option<&EventRow>, new: &EventRow) -> Option<Notice> {
-    let title = new.summary.clone().unwrap_or_else(|| "(без названия)".into());
+    let title = new.summary.clone().unwrap_or_else(crate::recurrence::untitled);
     match existing {
         Some(old) if old.status != "cancelled" => {
             if new.organizer_self || new.recurrence.is_some() {

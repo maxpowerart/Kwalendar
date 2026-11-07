@@ -18,6 +18,8 @@ pub struct Config {
     pub day_start_hour: u32,
     /// "system" | "dark" | "light"
     pub theme: String,
+    /// "system" (Windows display language) | "ru" | "en"
+    pub language: String,
     /// Optional push relay (see `relay/`). Empty = polling only.
     pub relay_url: String,
     /// Secret channel key shared with the relay; generated on first use.
@@ -41,6 +43,7 @@ impl Default for Config {
             sidebar: true,
             day_start_hour: 8,
             theme: "system".into(),
+            language: "system".into(),
             relay_url: String::new(),
             relay_key: String::new(),
             check_updates: true,
@@ -68,6 +71,7 @@ impl Config {
         }
         cfg.poll_focused_secs = cfg.poll_focused_secs.clamp(10, 600);
         cfg.poll_background_secs = cfg.poll_background_secs.clamp(30, 3600);
+        crate::i18n::apply(&cfg.language);
         cfg
     }
 

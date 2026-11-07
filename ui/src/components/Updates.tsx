@@ -2,6 +2,7 @@ import { createRoot, createSignal, For, Show } from 'solid-js';
 import { cmpVersion, on, updates, type Listed, type Release, type UpdateInfo } from '../api';
 import { store } from '../store';
 import { I } from '../icons';
+import { t } from '../i18n';
 
 const u = createRoot(() => {
   const [info, setInfo] = createSignal<UpdateInfo | null>(null);
@@ -21,9 +22,9 @@ function onInfo(i: UpdateInfo) {
     warnedWithdrawn = true;
     const target = w.target;
     store.banner(
-      `Версия ${i.current} отозвана${w.reason ? `: ${w.reason}` : ''}`,
+      t().versionWithdrawn(i.current, w.reason),
       'warn',
-      target ? { label: `Перейти на ${target.version}`, run: () => openListed(target) } : undefined,
+      target ? { label: t().goTo(target.version), run: () => openListed(target) } : undefined,
     );
   }
 }
@@ -62,8 +63,8 @@ async function install(r: Release) {
 export function UpdateButton() {
   const label = () => {
     const i = u.info();
-    if (i?.withdrawn) return { text: 'Версия отозвана', warn: true };
-    if (i?.available) return { text: `Обновление ${i.available.version}`, warn: false };
+    if (i?.withdrawn) return { text: t().withdrawnBtn, warn: true };
+    if (i?.available) return { text: t().updateBtn(i.available.version), warn: false };
     return null;
   };
   return (
@@ -86,7 +87,7 @@ export function UpdateButton() {
 }
 
 function bytes(n: number) {
-  return n > 1048576 ? `${(n / 1048576).toFixed(1)} МБ` : `${Math.round(n / 1024)} КБ`;
+  return n > 1048576 ? t().mb((n / 1048576).toFixed(1)) : t().kb(Math.round(n / 1024));
 }
 
 export function UpdateDialog() {
@@ -100,22 +101,22 @@ export function UpdateDialog() {
   return (
     <Show when={u.dialog()}>
       <div class="scrim" onPointerDown={(e) => e.target === e.currentTarget && close()} onKeyDown={(e) => e.key === 'Escape' && close()}>
-        <div class="dialog editor" role="dialog" aria-label="Обновление Kwalendar">
+        <div class="dialog editor" role="dialog" aria-label={t().updateDialog}>
           <div class="ed-head">
             <span class="lbl" style={{ flex: 1 }}>
-              {older() ? 'Откат на прошлую версию' : same() ? 'Переустановка' : 'Доступно обновление'}
+              {older() ? t().rollback : same() ? t().reinstallTitle : t().updateAvailable}
             </span>
-            <button class="ib" aria-label="Закрыть" onClick={close}>{I.close({ size: 15 })}</button>
+            <button class="ib" aria-label={t().close} onClick={close}>{I.close({ size: 15 })}</button>
           </div>
           <div class="ed-body">
             <div style={{ display: 'flex', 'align-items': 'baseline', gap: '10px' }}>
               <h2 style={{ 'font-size': '20px', 'font-weight': 600 }}>Kwalendar {r().version}</h2>
-              <span class="muted">сейчас {current()}{r().published ? ` · вышла ${r().published}` : ''}</span>
+              <span class="muted">{t().nowVersion(current())}{r().published ? t().released(r().published!) : ''}</span>
             </div>
             <Show when={older()}>
-              <p style={{ color: 'var(--warn-text)' }}>Это более старая версия. Ваши аккаунты, настройки и локальная копия календарей сохранятся.</p>
+              <p style={{ color: 'var(--warn-text)' }}>{t().olderWarn}</p>
             </Show>
-            <Show when={r().notes} fallback={<p class="muted">Описание изменений не приложено.</p>}>
+            <Show when={r().notes} fallback={<p class="muted">{t().noNotes}</p>}>
               <div class="desc" style={{ 'max-height': '300px', 'overflow-y': 'auto', padding: '10px 12px', background: 'var(--raised)', 'border-radius': '8px', border: '1px solid var(--line-3)' }}>
                 {r().notes}
               </div>
@@ -128,8 +129,8 @@ export function UpdateDialog() {
                   </div>
                   <span class="muted" style={{ 'font-size': '12px' }}>
                     {p().total && p().done >= p().total
-                      ? 'Проверено. Kwalendar закроется, установит обновление и запустится снова…'
-                      : `Скачивание… ${bytes(p().done)}${p().total ? ` из ${bytes(p().total)}` : ''}`}
+                      ? t().verified
+                      : t().downloading(bytes(p().done), p().total ? bytes(p().total) : '')}
                   </span>
                 </div>
               )}
@@ -149,13 +150,13 @@ export function UpdateDialog() {
                   u.setDialog(null);
                 }}
               >
-                Пропустить версию
+                {t().skipVersion}
               </button>
             </Show>
             <span style={{ flex: 1 }} />
-            <button class="btn ghost" disabled={!!u.progress()} onClick={close}>Позже</button>
+            <button class="btn ghost" disabled={!!u.progress()} onClick={close}>{t().later}</button>
             <button class="btn primary" disabled={!!u.progress()} onClick={() => install(r())}>
-              {older() ? `Откатиться на ${r().version}` : same() ? 'Переустановить' : 'Обновить и перезапустить'}
+              {older() ? t().rollbackTo(r().version) : same() ? t().reinstall : t().updateRestart}
             </button>
           </div>
         </div>
@@ -164,7 +165,7 @@ export function UpdateDialog() {
   );
 }
 
-/** Settings → Обновления. */
+/** Settings → Updates. */
 export function UpdatesSettings() {
   const [list, setList] = createSignal<Listed[] | null>(null);
   const [listErr, setListErr] = createSignal<string | null>(null);
@@ -176,8 +177,8 @@ export function UpdatesSettings() {
     try {
       const i = await updates.check();
       onInfo(i);
-      if (i.error) store.banner(`Не удалось проверить: ${i.error}`, 'error');
-      else if (!i.available) store.banner(`Установлена последняя версия ${i.current}`);
+      if (i.error) store.banner(t().checkFailed(i.error), 'error');
+      else if (!i.available) store.banner(t().latestInstalled(i.current));
     } finally {
       setChecking(false);
     }
@@ -198,28 +199,28 @@ export function UpdatesSettings() {
           <p>Kwalendar {u.info()?.current ?? ''}</p>
           <p>
             {u.info()?.available
-              ? `Доступна версия ${u.info()!.available!.version}`
+              ? t().versionAvailable(u.info()!.available!.version)
               : u.info()?.checkedAt
-                ? 'Установлена последняя версия'
-                : 'Обновления берутся из релизов GitHub: maxpowerart/Kwalendar'}
+                ? t().isLatest
+                : t().fromGithub}
           </p>
         </div>
         <Show when={u.info()?.available}>
-          <button class="btn primary" onClick={() => u.setDialog(u.info()!.available!)}>Обновить</button>
+          <button class="btn primary" onClick={() => u.setDialog(u.info()!.available!)}>{t().update}</button>
         </Show>
         <button class="btn" disabled={checking()} onClick={check}>
           <span class={checking() ? 'spin' : ''} style={{ display: 'inline-flex' }}>{I.sync({ size: 14 })}</span>
-          Проверить
+          {t().check}
         </button>
       </div>
       <div class="set">
-        <div class="l"><p>Проверять автоматически</p><p>При запуске и каждые 6 часов. Скачивание — только после вашего подтверждения</p></div>
+        <div class="l"><p>{t().autoCheck}</p><p>{t().autoCheckHint}</p></div>
         <button
           class="sw"
           classList={{ on: cfg().checkUpdates }}
           role="switch"
           aria-checked={cfg().checkUpdates}
-          aria-label="Проверять обновления"
+          aria-label={t().autoCheckAria}
           onClick={async () => {
             await store.run(store.snapConfigPatch({ checkUpdates: !cfg().checkUpdates }));
           }}
@@ -229,32 +230,32 @@ export function UpdatesSettings() {
       </div>
       <Show when={cfg().skippedVersion}>
         <div class="set">
-          <div class="l"><p>Пропущенная версия: {cfg().skippedVersion}</p><p>Не предлагается при фоновой проверке</p></div>
-          <button class="btn" onClick={() => store.run(store.snapConfigPatch({ skippedVersion: '' }))}>Снова предлагать</button>
+          <div class="l"><p>{t().skipped(cfg().skippedVersion)}</p><p>{t().skippedHint}</p></div>
+          <button class="btn" onClick={() => store.run(store.snapConfigPatch({ skippedVersion: '' }))}>{t().offerAgain}</button>
         </div>
       </Show>
       <div class="set" style={{ 'flex-direction': 'column', 'align-items': 'stretch' }}>
         <div style={{ display: 'flex', 'align-items': 'center', gap: '16px' }}>
-          <div class="l"><p>Установить другую версию</p><p>Если в новой версии что-то сломалось — вернитесь на предыдущую</p></div>
-          <button class="btn" onClick={loadList}>Показать версии</button>
+          <div class="l"><p>{t().otherVersion}</p><p>{t().otherVersionHint}</p></div>
+          <button class="btn" onClick={loadList}>{t().showVersions}</button>
         </div>
         <Show when={listErr()}>
           <p style={{ color: 'var(--err-text)', 'font-size': '12px' }}>{listErr()}</p>
         </Show>
         <Show when={list()}>
           <div style={{ display: 'flex', 'flex-direction': 'column', gap: '2px', 'margin-top': '6px' }}>
-            <For each={list()!} fallback={<p class="muted">Релизов пока нет</p>}>
+            <For each={list()!} fallback={<p class="muted">{t().noReleases}</p>}>
               {(l) => {
                 const isCurrent = () => cmpVersion(l.version, u.info()?.current ?? '0') === 0;
                 return (
                   <button class="qa-item" style={{ height: '38px' }} disabled={l.withdrawn} onClick={() => openListed(l)} title={l.withdrawn ? l.reason : ''}>
                     <span class="nm" style={{ 'font-weight': 500, opacity: l.withdrawn ? 0.5 : 1 }}>
                       {l.version}
-                      {isCurrent() ? ' · установлена' : ''}
-                      {l.prerelease && !l.withdrawn ? ' · пре-релиз' : ''}
+                      {isCurrent() ? t().installedTag : ''}
+                      {l.prerelease && !l.withdrawn ? t().prereleaseTag : ''}
                     </span>
                     <Show when={l.withdrawn}>
-                      <span class="sub" style={{ color: 'var(--warn-text)' }}>отозвана{l.reason ? `: ${l.reason}` : ''}</span>
+                      <span class="sub" style={{ color: 'var(--warn-text)' }}>{t().withdrawnTag(l.reason)}</span>
                     </Show>
                     <span class="sub">{l.published}</span>
                   </button>

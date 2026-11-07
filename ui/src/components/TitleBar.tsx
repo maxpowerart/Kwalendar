@@ -3,17 +3,18 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { api, isTauri } from '../api';
 import { store } from '../store';
 import { I, WinClose, WinMax, WinMin } from '../icons';
-import { plural, time } from '../dates';
+import { time } from '../dates';
+import { t } from '../i18n';
 import mark from '../assets/mark.svg';
 import { UpdateButton } from './Updates';
 
 function ago(ms: number, now: number): string {
   const s = Math.max(0, Math.round((now - ms) / 1000));
-  if (s < 60) return `${s} с назад`;
+  if (s < 60) return t().secAgo(s);
   const m = Math.round(s / 60);
-  if (m < 60) return `${m} мин назад`;
+  if (m < 60) return t().minAgo(m);
   const h = Math.round(m / 60);
-  return `${h} ${plural(h, 'час', 'часа', 'часов')} назад`;
+  return t().hoursAgo(h);
 }
 
 export function TitleBar() {
@@ -28,19 +29,19 @@ export function TitleBar() {
 
   const status = createMemo(() => {
     const s = sync();
-    if (!s || !hasAccounts()) return { color: 'var(--chrome-muted)', text: 'Нет аккаунтов' };
-    const q = s.pending ? ` · ${s.pending} в очереди` : '';
+    if (!s || !hasAccounts()) return { color: 'var(--chrome-muted)', text: t().noAccounts };
+    const q = s.pending ? t().inQueue(s.pending) : '';
     switch (s.state) {
       case 'syncing':
-        return { color: 'var(--icon)', text: `Синхронизация…${q}`, spin: true };
+        return { color: 'var(--icon)', text: `${t().syncing}${q}`, spin: true };
       case 'offline':
-        return { color: 'var(--node)', text: `Офлайн${q}` };
+        return { color: 'var(--node)', text: `${t().offline}${q}` };
       case 'error':
-        return { color: 'var(--err-text)', text: 'Ошибка синхронизации' };
+        return { color: 'var(--err-text)', text: t().syncError };
       default:
         return {
           color: 'var(--ok)',
-          text: s.lastSync ? `Синхронизировано · ${ago(s.lastSync, tick())}${q}` : `Готово${q}`,
+          text: s.lastSync ? `${t().synced(ago(s.lastSync, tick()))}${q}` : `${t().ready}${q}`,
         };
     }
   });
@@ -56,7 +57,7 @@ export function TitleBar() {
       </div>
       <button class="search-pill" onClick={() => store.setQuickAdd(true)}>
         {I.search({ size: 14 })}
-        <span class="t">Поиск или быстрое создание…</span>
+        <span class="t">{t().searchPill}</span>
         <span class="kbd">Ctrl K</span>
       </button>
       <div class="side end" data-tauri-drag-region>
@@ -64,8 +65,8 @@ export function TitleBar() {
         <Show when={muted()}>
           <button
             class="cb"
-            title={`Уведомления выключены до ${time(store.snap()!.mutedUntil)} — включить`}
-            aria-label="Включить уведомления"
+            title={t().unmuteHint(time(store.snap()!.mutedUntil))}
+            aria-label={t().unmute}
             onClick={async () => {
               await api.mute(0);
               await store.refresh();
@@ -78,22 +79,22 @@ export function TitleBar() {
           <span class="dot" style={{ width: '7px', height: '7px', background: status().color }} />
           {status().text}
         </span>
-        <button class="cb" aria-label="Синхронизировать сейчас" title="Синхронизировать (F5)" onClick={() => api.syncNow()}>
+        <button class="cb" aria-label={t().syncNowAria} title={t().syncNowTitle} onClick={() => api.syncNow()}>
           <span class={status().spin ? 'spin' : ''} style={{ display: 'inline-flex' }}>
             {I.sync({ size: 16, node: [20, 20, 2.2] })}
           </span>
         </button>
-        <button class="cb" aria-label="Настройки" title="Настройки (Ctrl+,)" onClick={() => store.setSettings(true)}>
+        <button class="cb" aria-label={t().settings} title={t().settingsTitle} onClick={() => store.setSettings(true)}>
           {I.settings({ size: 16, node: [12, 12, 3.2] })}
         </button>
         <Show when={win}>
-          <button class="wc" aria-label="Свернуть" onClick={() => win!.minimize()}>
+          <button class="wc" aria-label={t().minimize} onClick={() => win!.minimize()}>
             <WinMin />
           </button>
-          <button class="wc" aria-label="Развернуть" onClick={() => win!.toggleMaximize()}>
+          <button class="wc" aria-label={t().maximize} onClick={() => win!.toggleMaximize()}>
             <WinMax />
           </button>
-          <button class="wc x" aria-label="Закрыть в трей" onClick={() => win!.hide()}>
+          <button class="wc x" aria-label={t().closeToTray} onClick={() => win!.hide()}>
             <WinClose />
           </button>
         </Show>

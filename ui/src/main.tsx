@@ -13,7 +13,11 @@ if (import.meta.env.DEV) {
   const pick = new URLSearchParams(location.search).get('select');
   if (pick) {
     const timer = setInterval(() => {
-      const hit = store.items().find((i) => i.title.includes(pick) && i.start > Date.now() - 86_400_000);
+      // The occurrence nearest to now, past or future.
+      const hit = store
+        .items()
+        .filter((i) => i.title.includes(pick))
+        .sort((a, b) => Math.abs(a.start - Date.now()) - Math.abs(b.start - Date.now()))[0];
       if (hit) {
         store.setSelected(hit);
         clearInterval(timer);

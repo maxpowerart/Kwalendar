@@ -43,6 +43,8 @@ storage, recurrence and reminders live in a Rust core that never blocks the wind
   and sent to Google from a queue when the network is back, with conflict handling
   (the server version wins and you are told).
 - **Tray app**: closing the window keeps Kwalendar in the tray; optional start with Windows.
+- **Languages**: English and Russian; follows the Windows display language or is set in
+  Settings › System.
 - **Styles**: dark and light themes (or follow Windows), in the restrained *Kwak* look shared
   with [GitKwaken](https://github.com/maxpowerart/GitKwaken).
 - **Self-update** from GitHub releases, with a version picker and rollback (see

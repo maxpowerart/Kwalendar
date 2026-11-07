@@ -3,13 +3,14 @@ import { api, targetOf, type Attendee, type Instance } from '../api';
 import { store } from '../store';
 import { I } from '../icons';
 import { minutesLabel, relative, whenLabel } from '../dates';
+import { t } from '../i18n';
 
-const RESP: Record<string, { t: string; c: string }> = {
-  accepted: { t: 'да', c: 'var(--ok)' },
-  tentative: { t: 'может быть', c: 'var(--warn)' },
-  declined: { t: 'нет', c: 'var(--err-text)' },
-  needsAction: { t: 'нет ответа', c: 'var(--muted)' },
-};
+const RESP = (): Record<string, { t: string; c: string }> => ({
+  accepted: { t: t().respYes, c: 'var(--ok)' },
+  tentative: { t: t().respMaybe, c: 'var(--warn)' },
+  declined: { t: t().respNo, c: 'var(--err-text)' },
+  needsAction: { t: t().respNone, c: 'var(--muted)' },
+});
 
 /** Google descriptions are HTML; show them as plain text with clickable links. */
 export function descriptionText(html: string): string {
@@ -65,24 +66,24 @@ export function EventPanel(props: { inst: Instance }) {
   };
 
   return (
-    <section class="panel" aria-label="Событие">
+    <section class="panel" aria-label={t().event}>
       <div style={{ display: 'flex', 'align-items': 'center', 'justify-content': 'space-between' }}>
-        <span class="lbl">Событие{i().pending ? ' · сохраняется…' : ''}</span>
+        <span class="lbl">{t().event}{i().pending ? t().saving : ''}</span>
         <div style={{ display: 'flex' }}>
           <Show when={i().canEdit}>
-            <button class="ib" aria-label="Редактировать" title="Редактировать (E)" onClick={() => store.setDraft(store.editDraft(i()))}>
+            <button class="ib" aria-label={t().edit} title={t().editTitle} onClick={() => store.setDraft(store.editDraft(i()))}>
               {I.edit({ size: 15 })}
             </button>
-            <button class="ib" aria-label="Удалить" title="Удалить (Del)" onClick={() => (i().recurring ? setConfirm(!confirm()) : del('this'))}>
+            <button class="ib" aria-label={t().del} title={t().delTitle} onClick={() => (i().recurring ? setConfirm(!confirm()) : del('this'))}>
               {I.trash({ size: 15 })}
             </button>
           </Show>
           <Show when={i().htmlLink}>
-            <button class="ib" aria-label="Открыть в Google Календаре" title="Открыть в Google Календаре" onClick={() => api.openUrl(i().htmlLink!)}>
+            <button class="ib" aria-label={t().openInGoogle} title={t().openInGoogle} onClick={() => api.openUrl(i().htmlLink!)}>
               {I.external({ size: 15 })}
             </button>
           </Show>
-          <button class="ib" aria-label="Закрыть панель" title="Закрыть (Esc)" onClick={() => store.setSelected(null)}>
+          <button class="ib" aria-label={t().closePanel} title={t().closeTitle} onClick={() => store.setSelected(null)}>
             {I.close({ size: 15 })}
           </button>
         </div>
@@ -90,10 +91,10 @@ export function EventPanel(props: { inst: Instance }) {
 
       <Show when={confirm()}>
         <div class="card" style={{ 'flex-direction': 'column', 'align-items': 'stretch', gap: '8px' }}>
-          <span>Удалить повторяющееся событие</span>
+          <span>{t().deleteRecurring}</span>
           <div style={{ display: 'flex', gap: '6px' }}>
-            <button class="btn danger" style={{ flex: 1 }} onClick={() => del('this')}>Только это</button>
-            <button class="btn danger" style={{ flex: 1 }} onClick={() => del('series')}>Всю серию</button>
+            <button class="btn danger" style={{ flex: 1 }} onClick={() => del('this')}>{t().onlyThis}</button>
+            <button class="btn danger" style={{ flex: 1 }} onClick={() => del('series')}>{t().wholeSeries}</button>
           </div>
         </div>
       </Show>
@@ -109,7 +110,7 @@ export function EventPanel(props: { inst: Instance }) {
         </Show>
         <Show when={i().recurring}>
           <p class="muted" style={{ 'padding-left': '22px', 'font-size': '12px', display: 'flex', gap: '6px', 'align-items': 'center' }}>
-            {I.repeat({ size: 12 })} повторяющееся
+            {I.repeat({ size: 12 })} {t().recurring}
           </p>
         </Show>
       </div>
@@ -118,7 +119,7 @@ export function EventPanel(props: { inst: Instance }) {
         <div style={{ display: 'flex', 'flex-direction': 'column', gap: '6px' }}>
           <button class="join" onClick={() => api.openUrl(i().meetLink!)}>
             {I.video()}
-            {i().meetLink!.includes('zoom') ? 'Подключиться к Zoom' : i().meetLink!.includes('meet.google') ? 'Присоединиться к Google Meet' : 'Присоединиться'}
+            {i().meetLink!.includes('zoom') ? t().joinZoom : i().meetLink!.includes('meet.google') ? t().joinMeet : t().join}
           </button>
           <span style={{ 'font-family': 'var(--mono)', 'font-size': '11px', color: 'var(--muted)', 'text-align': 'center', overflow: 'hidden', 'text-overflow': 'ellipsis', 'white-space': 'nowrap' }}>
             {i().meetLink!.replace(/^https?:\/\//, '')}
@@ -147,7 +148,7 @@ export function EventPanel(props: { inst: Instance }) {
         <div class="row">
           {I.bell()}
           <div>
-            <Show when={i().reminders.length} fallback={<span class="muted">без напоминаний</span>}>
+            <Show when={i().reminders.length} fallback={<span class="muted">{t().noReminders}</span>}>
               <For each={[...i().reminders].sort((a, b) => a - b)}>{(m) => <div>{minutesLabel(m)}</div>}</For>
             </Show>
           </div>
@@ -157,9 +158,9 @@ export function EventPanel(props: { inst: Instance }) {
             {I.users()}
             <div style={{ display: 'flex', 'flex-direction': 'column', gap: '8px', flex: 1, 'min-width': 0 }}>
               <div>
-                {i().attendees.length} участн.{' '}
+                {t().attendeesN(i().attendees.length)}{' '}
                 <span class="muted">
-                  · {[counts().accepted && `${counts().accepted} да`, counts().tentative && `${counts().tentative} может быть`, counts().declined && `${counts().declined} нет`]
+                  · {[counts().accepted && t().countYes(counts().accepted), counts().tentative && t().countMaybe(counts().tentative), counts().declined && t().countNo(counts().declined)]
                     .filter(Boolean)
                     .join(', ')}
                 </span>
@@ -167,19 +168,19 @@ export function EventPanel(props: { inst: Instance }) {
               <For each={showAll() ? i().attendees : i().attendees.slice(0, 6)}>
                 {(a, n) => (
                   <div style={{ display: 'flex', 'align-items': 'center', gap: '8px', 'min-width': 0 }}>
-                    <span class="av" style={{ background: AV_COLORS[n() % AV_COLORS.length] }}>{a.isSelf ? 'Я' : initials(a)}</span>
+                    <span class="av" style={{ background: AV_COLORS[n() % AV_COLORS.length] }}>{a.isSelf ? t().meInitial : initials(a)}</span>
                     <span style={{ flex: 1, 'min-width': 0, overflow: 'hidden', 'text-overflow': 'ellipsis', 'white-space': 'nowrap' }} title={a.email}>
-                      {a.isSelf ? 'Вы' : a.name || a.email}
+                      {a.isSelf ? t().you : a.name || a.email}
                     </span>
-                    <span style={{ 'font-size': '11px', color: a.organizer ? 'var(--muted)' : RESP[a.response]?.c }}>
-                      {a.organizer ? 'организатор' : RESP[a.response]?.t}
+                    <span style={{ 'font-size': '11px', color: a.organizer ? 'var(--muted)' : RESP()[a.response]?.c }}>
+                      {a.organizer ? t().organizer : RESP()[a.response]?.t}
                     </span>
                   </div>
                 )}
               </For>
               <Show when={i().attendees.length > 6 && !showAll()}>
                 <button class="btn ghost" style={{ 'align-self': 'flex-start', height: '26px', padding: '0 6px' }} onClick={() => setShowAll(true)}>
-                  ещё {i().attendees.length - 6}
+                  {t().more(i().attendees.length - 6)}
                 </button>
               </Show>
             </div>
@@ -197,11 +198,11 @@ export function EventPanel(props: { inst: Instance }) {
 
       <Show when={isAttendee()}>
         <div style={{ 'margin-top': 'auto', display: 'flex', 'flex-direction': 'column', gap: '8px' }}>
-          <span style={{ 'font-size': '12px', color: 'var(--muted)' }}>Пойдёте?</span>
+          <span style={{ 'font-size': '12px', color: 'var(--muted)' }}>{t().going}</span>
           <div class="seg">
-            <button classList={{ on: i().selfResponse === 'accepted' }} onClick={() => respond('accepted')}>Да</button>
-            <button classList={{ on: i().selfResponse === 'tentative' }} onClick={() => respond('tentative')}>Может быть</button>
-            <button classList={{ on: i().selfResponse === 'declined' }} onClick={() => respond('declined')}>Нет</button>
+            <button classList={{ on: i().selfResponse === 'accepted' }} onClick={() => respond('accepted')}>{t().yes}</button>
+            <button classList={{ on: i().selfResponse === 'tentative' }} onClick={() => respond('tentative')}>{t().maybe}</button>
+            <button classList={{ on: i().selfResponse === 'declined' }} onClick={() => respond('declined')}>{t().no}</button>
           </div>
         </div>
       </Show>

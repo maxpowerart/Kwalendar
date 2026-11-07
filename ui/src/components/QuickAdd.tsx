@@ -4,6 +4,7 @@ import { store } from '../store';
 import { I } from '../icons';
 import { parseQuick } from '../quickparse';
 import { dateLabel, time, timeRange, whenLabel } from '../dates';
+import { t } from '../i18n';
 
 type Item =
   | { kind: 'create' }
@@ -36,11 +37,11 @@ export function QuickAdd() {
     for (const inst of found()) list.push({ kind: 'event', inst });
     if (!text().trim()) {
       list.push(
-        { kind: 'goto', label: 'Сегодня', run: () => store.goto(new Date()) },
-        { kind: 'goto', label: 'Вид: неделя', run: () => store.setView('week') },
-        { kind: 'goto', label: 'Вид: месяц', run: () => store.setView('month') },
-        { kind: 'goto', label: 'Повестка', run: () => store.setView('agenda') },
-        { kind: 'goto', label: 'Настройки', run: () => store.setSettings(true) },
+        { kind: 'goto', label: t().today, run: () => store.goto(new Date()) },
+        { kind: 'goto', label: t().qaViewWeek, run: () => store.setView('week') },
+        { kind: 'goto', label: t().qaViewMonth, run: () => store.setView('month') },
+        { kind: 'goto', label: t().viewAgenda, run: () => store.setView('agenda') },
+        { kind: 'goto', label: t().settings, run: () => store.setSettings(true) },
       );
     }
     return list;
@@ -64,7 +65,7 @@ export function QuickAdd() {
     if (!item) return;
     if (item.kind === 'create' && p) {
       const c = cal();
-      if (!c) return store.banner('Нет календаря для записи — подключите аккаунт', 'warn');
+      if (!c) return store.banner(t().qaNoCalendar, 'warn');
       const res = await store.run(
         api.createEvent({
           accountId: c.accountId,
@@ -82,7 +83,7 @@ export function QuickAdd() {
       if (res !== undefined) {
         close();
         store.goto(p.start);
-        store.banner(`Создано: «${p.title}» · ${whenLabel(p)}`);
+        store.banner(t().qaCreated(p.title, whenLabel(p)));
       }
     } else if (item.kind === 'edit' && p) {
       const d = store.newDraft(p.start, p.end, p.allDay, p.title);
@@ -124,15 +125,15 @@ export function QuickAdd() {
 
   return (
     <div class="scrim" onPointerDown={(e) => e.target === e.currentTarget && close()}>
-      <div class="dialog qa" role="dialog" aria-label="Быстрый ввод" onKeyDown={onKey}>
+      <div class="dialog qa" role="dialog" aria-label={t().qaDialog} onKeyDown={onKey}>
         <div class="qa-input">
           <span style={{ color: 'var(--accent)', display: 'inline-flex' }}>{parsed()?.title ? I.plus({ size: 18 }) : I.search({ size: 18 })}</span>
           <input
             ref={input}
-            placeholder="Созвон с Петей завтра в 15 на 30 мин #работа — или поиск"
+            placeholder={t().qaPlaceholder}
             value={text()}
             onInput={(e) => onInput(e.currentTarget.value)}
-            aria-label="Быстрый ввод события или поиск"
+            aria-label={t().qaAria}
             spellcheck={false}
           />
           <span class="kbd">Esc</span>
@@ -148,7 +149,7 @@ export function QuickAdd() {
               <span class="pill">{I.calendar({ size: 13 })}{dateLabel(parsed()!.start, store.now())}</span>
               <span class="pill">
                 {I.clock({ size: 13 })}
-                {parsed()!.allDay ? 'весь день' : timeRange(parsed()!.start, parsed()!.end)}
+                {parsed()!.allDay ? t().allDay : timeRange(parsed()!.start, parsed()!.end)}
               </span>
               <Show when={cal()}>
                 <span class="pill">
@@ -156,7 +157,7 @@ export function QuickAdd() {
                   {store.calendarLabel(cal())}
                 </span>
               </Show>
-              <span class="pill">{I.bell({ size: 13 })}как в календаре</span>
+              <span class="pill">{I.bell({ size: 13 })}{t().qaCalDefault}</span>
             </div>
             <Show
               when={!parsed()!.allDay}
@@ -165,8 +166,8 @@ export function QuickAdd() {
               <p style={{ display: 'flex', 'align-items': 'center', gap: '6px', 'font-size': '12px', color: 'var(--muted)' }}>
                 <span class="dot" style={{ width: '7px', height: '7px', background: conflicts().length ? 'var(--warn)' : 'var(--ok)' }} />
                 {conflicts().length
-                  ? `Пересекается: ${conflicts().map((c) => `«${c.title}» ${time(c.start)}`).join(', ')}`
-                  : 'Время свободно'}
+                  ? t().qaOverlaps(conflicts().map((c) => `«${c.title}» ${time(c.start)}`).join(', '))
+                  : t().qaFree}
               </p>
             </Show>
           </div>
@@ -174,7 +175,7 @@ export function QuickAdd() {
 
         <div style={{ padding: '4px 6px 8px', 'overflow-y': 'auto' }}>
           <Show when={parsed()?.title}>
-            <div class="qa-sec">Действия</div>
+            <div class="qa-sec">{t().qaActions}</div>
           </Show>
           <For each={items()}>
             {(it) => {
@@ -183,20 +184,20 @@ export function QuickAdd() {
               if (it.kind === 'create')
                 return (
                   <button {...props} classList={{ on: on() }}>
-                    {I.plus()}<span class="nm">Создать событие</span><span class="kbd">↵</span>
+                    {I.plus()}<span class="nm">{t().createEvent}</span><span class="kbd">↵</span>
                   </button>
                 );
               if (it.kind === 'edit')
                 return (
                   <button {...props} classList={{ on: on() }}>
-                    {I.edit()}<span class="nm">Создать с подробностями…</span><span class="kbd">Ctrl ↵</span>
+                    {I.edit()}<span class="nm">{t().qaCreateDetailed}</span><span class="kbd">Ctrl ↵</span>
                   </button>
                 );
               if (it.kind === 'event')
                 return (
                   <>
                     <Show when={found()[0] === it.inst}>
-                      <div class="qa-sec">Найдено</div>
+                      <div class="qa-sec">{t().qaFound}</div>
                     </Show>
                     <button {...props} classList={{ on: on() }}>
                       <span class="dot" style={{ background: it.inst.color }} />
@@ -218,11 +219,11 @@ export function QuickAdd() {
         </div>
 
         <div class="qa-foot">
-          <span><span class="kbd">↑↓</span>выбор</span>
-          <span><span class="kbd">#</span>календарь</span>
-          <span><span class="kbd">Ctrl ↵</span>подробнее</span>
+          <span><span class="kbd">↑↓</span>{t().qaSelect}</span>
+          <span><span class="kbd">#</span>{t().qaCalendar}</span>
+          <span><span class="kbd">Ctrl ↵</span>{t().qaDetails}</span>
           <span style={{ flex: 1 }} />
-          <span>Понимает русский и English</span>
+          <span>{t().qaLangs}</span>
         </div>
       </div>
     </div>

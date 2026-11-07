@@ -3,6 +3,7 @@ import { api, targetOf, type Instance } from '../api';
 import { store } from '../store';
 import { layoutAllDay, layoutDay, onSolid, tint } from '../layout';
 import { addDays, DAY, hhmm, sameDay, startOfDay, time, timeRange, weekdayShort } from '../dates';
+import { t as L } from '../i18n';
 
 const HOUR = 48;
 const SNAP = 15;
@@ -193,7 +194,7 @@ export function WeekView() {
               class="dh"
               classList={{ today: sameDay(d, store.now()), we: d.getDay() === 0 || d.getDay() === 6 }}
               onClick={() => store.goto(d, 'day')}
-              title="Открыть день"
+              title={L().openDay}
             >
               <span class="dh-n">{weekdayShort(d)}</span>
               <span class="dh-d">{d.getDate()}</span>
@@ -203,7 +204,7 @@ export function WeekView() {
       </div>
 
       <div class="allday" style={{ 'grid-template-rows': `repeat(${allDayRows()}, 24px)` }}>
-        <div class="lab">весь день</div>
+        <div class="lab">{L().allDay}</div>
         <For each={allDay()}>
           {(a) => {
             const t = tint(a.inst.color);
@@ -285,7 +286,7 @@ export function WeekView() {
                           <b>{p.inst.title}</b>
                           <span>
                             {timeRange(p.inst.start, p.inst.end)}
-                            {p.inst.location ? ` · ${p.inst.location}` : p.inst.meetLink ? ' · видео' : ''}
+                            {p.inst.location ? ` · ${p.inst.location}` : p.inst.meetLink ? ` · ${L().video}` : ''}
                           </span>
                         </Show>
                         <Show when={p.inst.canEdit}>
@@ -335,7 +336,7 @@ export function WeekView() {
                     const st = (r.inst.start - base) / 60_000;
                     return (
                       <div class="drag-ghost" style={{ top: `${px(st)}px`, height: `${px(r.endMin - st)}px` }}>
-                        {r.inst.title} · до {hhmm(base + r.endMin * 60_000)}
+                        {r.inst.title} · {L().until(hhmm(base + r.endMin * 60_000))}
                       </div>
                     );
                   }}

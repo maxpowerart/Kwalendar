@@ -4,6 +4,7 @@ pub mod auth;
 pub mod config;
 pub mod db;
 pub mod google;
+pub mod i18n;
 pub mod models;
 pub mod recurrence;
 mod push;
@@ -64,6 +65,8 @@ pub struct Snapshot {
     pub push_active: bool,
     /// This build ships an OAuth client: no Google Cloud setup needed.
     pub builtin_client: bool,
+    /// Windows display language ("ru" | "en"), for `config.language == "system"`.
+    pub system_lang: &'static str,
 }
 
 impl Core {
@@ -173,6 +176,7 @@ impl Core {
             muted_until: self.muted_until.load(Ordering::Relaxed),
             push_active: self.push_active(),
             builtin_client: Config::builtin_client(),
+            system_lang: i18n::system_lang(),
         })
     }
 
@@ -222,7 +226,7 @@ impl Core {
     pub async fn add_account(&self, open_url: impl FnOnce(String), hint: Option<String>) -> Result<Account> {
         let cfg = self.config();
         if !cfg.has_client() {
-            bail!("Укажите OAuth Client ID в настройках");
+            bail!(crate::tr!("Укажите OAuth Client ID в настройках", "Set up an OAuth Client ID in Settings"));
         }
         let (client_id, client_secret) = cfg.client();
         let li = auth::login(

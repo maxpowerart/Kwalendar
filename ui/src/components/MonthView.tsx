@@ -2,7 +2,8 @@ import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-j
 import type { Instance } from '../api';
 import { store } from '../store';
 import { onSolid, tint } from '../layout';
-import { addDays, DAY, isoDate, sameDay, startOfDay, time, WEEKDAYS } from '../dates';
+import { addDays, DAY, isoDate, sameDay, shortDate, startOfDay, time, weekdays } from '../dates';
+import { t as L } from '../i18n';
 
 const CHIP = 22;
 
@@ -62,7 +63,7 @@ export function MonthView() {
   return (
     <div class="month">
       <div class="month-head">
-        <For each={WEEKDAYS}>{(w) => <div class="wd">{w}</div>}</For>
+        <For each={weekdays()}>{(w) => <div class="wd">{w}</div>}</For>
       </div>
       <div class="month-grid" ref={gridEl} style={{ 'grid-template-rows': `repeat(${weeks()}, minmax(0, 1fr))` }}>
         <For each={cells()}>
@@ -83,7 +84,7 @@ export function MonthView() {
                 }}
               >
                 <button class="mn" onClick={() => store.goto(c.d, 'day')}>
-                  {c.d.getDate() === 1 ? c.d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '') : c.d.getDate()}
+                  {c.d.getDate() === 1 ? shortDate(c.d) : c.d.getDate()}
                 </button>
                 <For each={shown()}>
                   {(i) => {
@@ -118,7 +119,7 @@ export function MonthView() {
                 </For>
                 <Show when={more() > 0}>
                   <button class="more" onClick={() => store.goto(c.d, 'day')}>
-                    ещё {more()}
+                    {L().more(more())}
                   </button>
                 </Show>
               </div>

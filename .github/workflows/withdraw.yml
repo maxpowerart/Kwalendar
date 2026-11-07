@@ -2,7 +2,7 @@ name: Withdraw release
 
 # Pulls a bad release: it is marked "(withdrawn)" and as a pre-release, so the update channel
 # (releases/latest/download/update.json) goes back to the newest good release. Nobody is offered
-# the bad version any more, and Kwalendar installations already running it see "Перейти на
+# the bad version any more, and Kwalendar installations already running it see "Switch to
 # <good version>" with the reason given here. "restore" undoes it.
 
 on:
@@ -44,7 +44,7 @@ jobs:
             gh release edit "$tag" --repo "$REPO" --title "Kwalendar $ver" --prerelease=false --notes "$body"
             echo "restored $tag"
           else
-            note="**Withdrawn:** ${REASON:-в этой версии серьёзная ошибка.}"
+            note="**Withdrawn:** ${REASON:-this version has a serious bug.}"
             gh release edit "$tag" --repo "$REPO" --title "Kwalendar $ver (withdrawn)" --prerelease \
               --notes "$(printf '%s\n\n%s\n' "$note" "$body")"
             echo "withdrew $tag"

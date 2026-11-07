@@ -2,6 +2,7 @@ import { createMemo, For, Show } from 'solid-js';
 import type { Instance } from '../api';
 import { store } from '../store';
 import { dateLabel, dayMonth, isoDate, sameDay, startOfDay, timeRange, weekdayLong } from '../dates';
+import { t } from '../i18n';
 
 export function AgendaView() {
   const groups = createMemo(() => {
@@ -18,7 +19,7 @@ export function AgendaView() {
 
   return (
     <div class="agenda">
-      <Show when={groups().length} fallback={<div class="empty"><p class="muted">В ближайшие 60 дней событий нет</p></div>}>
+      <Show when={groups().length} fallback={<div class="empty"><p class="muted">{t().agendaEmpty}</p></div>}>
         <For each={groups()}>
           {(g) => (
             <div class="ag-day">
@@ -35,7 +36,7 @@ export function AgendaView() {
                       style={{ opacity: i.end < store.now() ? 0.55 : 1 }}
                       onClick={() => store.setSelected(i)}
                     >
-                      <span class="t">{i.allDay ? 'весь день' : timeRange(i.start, i.end)}</span>
+                      <span class="t">{i.allDay ? t().allDay : timeRange(i.start, i.end)}</span>
                       <span class="bar" style={{ background: i.color }} />
                       <span style={{ display: 'flex', 'flex-direction': 'column', 'min-width': 0 }}>
                         <span class="tt" style={{ 'text-decoration': i.selfResponse === 'declined' ? 'line-through' : undefined }}>
@@ -43,7 +44,7 @@ export function AgendaView() {
                         </span>
                         <Show when={i.location || i.meetLink}>
                           <span class="muted" style={{ 'font-size': '12px' }}>
-                            {i.location ?? 'Видеовстреча'}
+                            {i.location ?? t().videoCall}
                           </span>
                         </Show>
                       </span>

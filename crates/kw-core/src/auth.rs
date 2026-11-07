@@ -101,7 +101,7 @@ pub async fn login(
 
     let code = tokio::time::timeout(Duration::from_secs(300), wait_for_code(&listener, &state))
         .await
-        .map_err(|_| anyhow!("Время входа истекло"))??;
+        .map_err(|_| anyhow!(crate::tr!("Время входа истекло", "Sign-in timed out")))??;
 
     let resp = http
         .post(token_url)
@@ -116,7 +116,7 @@ pub async fn login(
         .send()
         .await?;
     if !resp.status().is_success() {
-        bail!("Google отклонил вход: {}", resp.text().await.unwrap_or_default());
+        bail!(crate::tr!("Google отклонил вход: {}", "Google rejected the sign-in: {}", resp.text().await.unwrap_or_default()));
     }
     let tok: TokenResponse = resp.json().await?;
     let user: UserInfo = http
@@ -129,7 +129,7 @@ pub async fn login(
         .await?;
     let refresh = tok
         .refresh_token
-        .ok_or_else(|| anyhow!("Google не вернул refresh-токен"))?;
+        .ok_or_else(|| anyhow!(crate::tr!("Google не вернул refresh-токен", "Google did not return a refresh token")))?;
     store_refresh_token(&user.sub, &refresh)?;
     Ok(LoggedIn {
         user,
@@ -167,7 +167,11 @@ async fn wait_for_code(listener: &TcpListener, state: &str) -> Result<String> {
         let ok = error.is_none() && got_state.as_deref() == Some(state);
         let body = format!(
             "<!doctype html><meta charset=utf-8><title>Kwalendar</title><body style=\"font:16px system-ui;background:#0F1013;color:#ECEDEF;display:grid;place-items:center;height:100vh;margin:0\"><div>{}</div></body>",
-            if ok { "Готово — вкладку можно закрыть и вернуться в Kwalendar." } else { "Вход отменён. Вернитесь в Kwalendar и попробуйте ещё раз." }
+            if ok {
+                crate::tr!("Готово — вкладку можно закрыть и вернуться в Kwalendar.", "Done — you can close this tab and return to Kwalendar.")
+            } else {
+                crate::tr!("Вход отменён. Вернитесь в Kwalendar и попробуйте ещё раз.", "Sign-in was cancelled. Return to Kwalendar and try again.")
+            }
         );
         let resp = format!(
             "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
@@ -177,10 +181,10 @@ async fn wait_for_code(listener: &TcpListener, state: &str) -> Result<String> {
         let _ = sock.write_all(resp.as_bytes()).await;
         let _ = sock.shutdown().await;
         if let Some(e) = error {
-            bail!("Вход отменён: {e}");
+            bail!(crate::tr!("Вход отменён: {e}", "Sign-in cancelled: {e}"));
         }
         if got_state.as_deref() != Some(state) {
-            bail!("Неверный state в ответе OAuth");
+            bail!(crate::tr!("Неверный state в ответе OAuth", "Wrong state in the OAuth response"));
         }
         return Ok(code.unwrap());
     }

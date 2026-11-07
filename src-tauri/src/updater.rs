@@ -110,14 +110,17 @@ fn ps_quote(p: &std::path::Path) -> String {
 #[tauri::command]
 pub async fn update_install(app: AppHandle, release: Release) -> Result<(), String> {
     let dir = install_dir().ok_or_else(|| {
-        "Это не установленная копия (сборка для разработки) — установите Kwalendar установщиком, чтобы обновляться из приложения"
+        kw_core::tr!(
+            "Это не установленная копия (сборка для разработки) — установите Kwalendar установщиком, чтобы обновляться из приложения",
+            "This is not an installed copy (a development build) — install Kwalendar with the installer to update from the app"
+        )
             .to_string()
     })?;
     let u = app.state::<Updates>();
     {
         let mut busy = u.busy.lock().unwrap();
         if *busy {
-            return Err("Обновление уже скачивается".into());
+            return Err(kw_core::tr!("Обновление уже скачивается", "An update is already downloading"));
         }
         *busy = true;
     }
@@ -168,7 +171,7 @@ pub async fn update_install(app: AppHandle, release: Release) -> Result<(), Stri
     // Leave the parent's job (if any) so the updater survives our exit; not every job allows it.
     spawn(CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB)
         .or_else(|_| spawn(CREATE_NO_WINDOW))
-        .map_err(|e| format!("не удалось запустить установщик: {e}"))?;
+        .map_err(|e| kw_core::tr!("не удалось запустить установщик: {e}", "could not start the installer: {e}"))?;
     log::info!("installing {} ({}), restarting", release.version, if downgrade { "rollback" } else { "update" });
     app.exit(0);
     Ok(())

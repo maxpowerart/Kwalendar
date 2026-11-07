@@ -1,3 +1,5 @@
+import { locale, t } from './i18n';
+
 export const DAY = 86_400_000;
 export const MIN = 60_000;
 
@@ -60,65 +62,64 @@ export function isoWeek(d: Date): number {
   return Math.ceil(((x.getTime() - y0.getTime()) / DAY + 1) / 7);
 }
 
-const fmtTime = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' });
-const fmtMonthYear = new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' });
-const fmtDayMonth = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
-const fmtWeekdayShort = new Intl.DateTimeFormat('ru-RU', { weekday: 'short' });
-const fmtWeekdayLong = new Intl.DateTimeFormat('ru-RU', { weekday: 'long' });
-const fmtShortDate = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' });
+// Formatters follow the UI language; cached per locale.
+const fmtCache = new Map<string, Intl.DateTimeFormat>();
+const fmt = (name: string, opts: Intl.DateTimeFormatOptions) => (d: Date | number) => {
+  const key = `${locale()}|${name}`;
+  let f = fmtCache.get(key);
+  if (!f) fmtCache.set(key, (f = new Intl.DateTimeFormat(locale(), opts)));
+  return f.format(d);
+};
+const fmtTime = fmt('time', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const fmtMonthYear = fmt('monthYear', { month: 'long', year: 'numeric' });
+const fmtDayMonth = fmt('dayMonth', { day: 'numeric', month: 'long' });
+const fmtWeekdayShort = fmt('wdShort', { weekday: 'short' });
+const fmtWeekdayLong = fmt('wdLong', { weekday: 'long' });
+const fmtShortDate = fmt('shortDate', { day: 'numeric', month: 'short' });
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export const time = (ms: number) => fmtTime.format(ms);
-export const monthYear = (d: Date) => cap(fmtMonthYear.format(d).replace(' г.', ''));
-export const dayMonth = (d: Date | number) => fmtDayMonth.format(d);
-export const weekdayShort = (d: Date) => cap(fmtWeekdayShort.format(d));
-export const weekdayLong = (d: Date | number) => cap(fmtWeekdayLong.format(d));
-export const shortDate = (d: Date | number) => fmtShortDate.format(d).replace('.', '');
+export const time = (ms: number) => fmtTime(ms);
+export const monthYear = (d: Date) => cap(fmtMonthYear(d).replace(' г.', ''));
+export const dayMonth = (d: Date | number) => fmtDayMonth(d);
+export const weekdayShort = (d: Date) => cap(fmtWeekdayShort(d));
+export const weekdayLong = (d: Date | number) => cap(fmtWeekdayLong(d));
+export const shortDate = (d: Date | number) => fmtShortDate(d).replace('.', '');
 
-export const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+/** Monday-first short weekday names for grid headers. */
+export const weekdays = () => t().weekdays;
 
 export function timeRange(start: number, end: number): string {
   return `${time(start)}–${time(end)}`;
 }
 
-/** "через 1 ч 13 мин" / "идёт сейчас" / "закончилось" */
+/** "через 1 ч 13 мин" / "идёт сейчас" / "" once it has ended */
 export function relative(start: number, end: number, now = Date.now()): string {
-  if (now >= start && now < end) return 'идёт сейчас';
+  const L = t();
+  if (now >= start && now < end) return L.happeningNow;
   if (now >= end) return '';
   const mins = Math.round((start - now) / MIN);
-  if (mins < 1) return 'начинается';
-  if (mins < 60) return `через ${mins} мин`;
-  if (mins < 24 * 60) {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return m ? `через ${h} ч ${m} мин` : `через ${h} ч`;
-  }
+  if (mins < 1) return L.starting;
+  if (mins < 60) return L.inMin(mins);
+  if (mins < 24 * 60) return L.inHours(Math.floor(mins / 60), mins % 60);
   const days = Math.round((startOfDay(start).getTime() - startOfDay(now).getTime()) / DAY);
-  if (days === 1) return 'завтра';
-  if (days < 7) return `через ${days} ${plural(days, 'день', 'дня', 'дней')}`;
+  if (days === 1) return L.tomorrowLower;
+  if (days < 7) return L.inDays(days);
   return '';
 }
 
-export function plural(n: number, one: string, few: string, many: string): string {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
-  return many;
-}
-
 export function minutesLabel(m: number): string {
-  if (m === 0) return 'в момент начала';
-  if (m % 1440 === 0) return `за ${m / 1440} ${plural(m / 1440, 'день', 'дня', 'дней')}`;
-  if (m % 60 === 0) return `за ${m / 60} ч`;
-  return `за ${m} мин`;
+  const L = t();
+  if (m === 0) return L.atStart;
+  if (m % 1440 === 0) return L.daysBefore(m / 1440);
+  if (m % 60 === 0) return L.hoursBefore(m / 60);
+  return L.minBefore(m);
 }
 
 export function dateLabel(d: Date | number, now = Date.now()): string {
-  if (sameDay(d, now)) return 'Сегодня';
-  if (sameDay(d, now + DAY)) return 'Завтра';
-  if (sameDay(d, now - DAY)) return 'Вчера';
+  if (sameDay(d, now)) return t().today;
+  if (sameDay(d, now + DAY)) return t().tomorrow;
+  if (sameDay(d, now - DAY)) return t().yesterday;
   return `${weekdayShort(new Date(d))}, ${dayMonth(d)}`;
 }
 
@@ -128,8 +129,8 @@ export function whenLabel(i: { start: number; end: number; allDay: boolean }): s
   if (i.allDay) {
     const lastDay = new Date(i.end - 1);
     return sameDay(s, lastDay)
-      ? `${weekdayShort(s)}, ${dayMonth(s)} · весь день`
-      : `${shortDate(s)} – ${shortDate(lastDay)} · весь день`;
+      ? `${weekdayShort(s)}, ${dayMonth(s)} · ${t().allDay}`
+      : `${shortDate(s)} – ${shortDate(lastDay)} · ${t().allDay}`;
   }
   if (sameDay(i.start, i.end - 1)) return `${weekdayShort(s)}, ${dayMonth(s)} · ${timeRange(i.start, i.end)}`;
   return `${shortDate(s)}, ${time(i.start)} – ${shortDate(i.end)}, ${time(i.end)}`;

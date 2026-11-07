@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use chrono::{Local, TimeZone};
-use kw_core::{Core, Instance, Notice, Reminder};
+use kw_core::{tr, Core, Instance, Notice, Reminder};
 use tauri::{AppHandle, Emitter};
 
 pub const AUMID: &str = "com.kwalendar.app";
@@ -17,19 +17,23 @@ fn hm(ms: i64) -> String {
 }
 
 fn day_label(ms: i64) -> String {
-    const MONTHS: [&str; 12] = [
+    const MONTHS_RU: [&str; 12] = [
         "января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря",
+    ];
+    const MONTHS_EN: [&str; 12] = [
+        "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December",
     ];
     let Some(d) = Local.timestamp_millis_opt(ms).single() else { return String::new() };
     let today = Local::now().date_naive();
     let date = d.date_naive();
     if date == today {
-        "сегодня".into()
+        tr!("сегодня", "today")
     } else if date == today.succ_opt().unwrap_or(today) {
-        "завтра".into()
+        tr!("завтра", "tomorrow")
     } else {
         use chrono::Datelike;
-        format!("{} {}", date.day(), MONTHS[date.month0() as usize])
+        let months = if kw_core::i18n::is_en() { MONTHS_EN } else { MONTHS_RU };
+        format!("{} {}", date.day(), months[date.month0() as usize])
     }
 }
 
@@ -38,16 +42,21 @@ fn when_text(r: &Reminder) -> String {
     let now = chrono::Utc::now().timestamp_millis();
     let left = (i.start - now) / 60_000;
     let lead = if left <= 0 {
-        "Начинается сейчас".to_string()
+        tr!("Начинается сейчас", "Starting now")
     } else if left < 60 {
-        format!("Через {left} мин")
+        tr!("Через {left} мин", "In {left} min")
     } else if left < 24 * 60 {
-        format!("Через {} ч {} мин", left / 60, left % 60).replace(" 0 мин", "")
+        let (h, m) = (left / 60, left % 60);
+        if m == 0 {
+            tr!("Через {h} ч", "In {h} h")
+        } else {
+            tr!("Через {h} ч {m} мин", "In {h} h {m} min")
+        }
     } else {
         format!("{}", day_label(i.start))
     };
     if i.all_day {
-        format!("{lead} · весь день")
+        tr!("{lead} · весь день", "{lead} · all day")
     } else {
         format!("{lead} · {}–{}", hm(i.start), hm(i.end))
     }
@@ -56,7 +65,7 @@ fn when_text(r: &Reminder) -> String {
 fn detail_text(i: &Instance) -> String {
     let mut parts = Vec::new();
     if i.meet_link.is_some() {
-        parts.push(if i.meet_link.as_deref().unwrap_or("").contains("zoom") { "Zoom" } else { "Видеовстреча" }.to_string());
+        parts.push(if i.meet_link.as_deref().unwrap_or("").contains("zoom") { "Zoom".to_string() } else { tr!("Видеовстреча", "Video call") });
     }
     if let Some(l) = &i.location {
         if !l.starts_with("http") {
@@ -64,7 +73,8 @@ fn detail_text(i: &Instance) -> String {
         }
     }
     if !i.attendees.is_empty() {
-        parts.push(format!("{} участн.", i.attendees.len()));
+        let n = i.attendees.len();
+        parts.push(if n == 1 { tr!("{n} участн.", "{n} guest") } else { tr!("{n} участн.", "{n} guests") });
     }
     parts.join(" · ")
 }
@@ -106,9 +116,11 @@ pub fn reminder(app: &AppHandle, core: Arc<Core>, r: Reminder) {
         .scenario(Scenario::Reminder)
         .sound(Some(Sound::Reminder));
     if inst.meet_link.is_some() {
-        toast = toast.add_button("Присоединиться", "join");
+        toast = toast.add_button(&tr!("Присоединиться", "Join"), "join");
     }
-    toast = toast.add_button("Через 5 мин", "snooze").add_button("Скрыть", "dismiss");
+    toast = toast
+        .add_button(&tr!("Через 5 мин", "In 5 min"), "snooze")
+        .add_button(&tr!("Скрыть", "Dismiss"), "dismiss");
     let app2 = app.clone();
     let toast = toast.on_activated(move |action| {
         match action.as_deref() {
@@ -136,7 +148,7 @@ pub fn notice(app: &AppHandle, n: &Notice) {
     use tauri_winrt_notification::Toast;
     let (title, text) = match n {
         Notice::Moved { title, old_start, new_start, all_day } => (
-            format!("Перенесено: {title}"),
+            tr!("Перенесено: {title}", "Moved: {title}"),
             if *all_day {
                 format!("{} → {}", day_label(*old_start), day_label(*new_start))
             } else {
@@ -144,16 +156,22 @@ pub fn notice(app: &AppHandle, n: &Notice) {
             },
         ),
         Notice::Invite { title, start, organizer } => (
-            format!("Приглашение: {title}"),
+            tr!("Приглашение: {title}", "Invitation: {title}"),
             format!(
                 "{}, {}{}",
                 day_label(*start),
                 hm(*start),
-                organizer.as_ref().map(|o| format!(" · от {o}")).unwrap_or_default()
+                organizer.as_ref().map(|o| tr!(" · от {o}", " · from {o}")).unwrap_or_default()
             ),
         ),
-        Notice::Reauth { email } => ("Нужно войти снова".into(), format!("{email}: доступ к календарю отозван")),
-        Notice::Conflict { title } => ("Изменение не сохранено".into(), format!("«{title}» изменили на сервере — показана свежая версия")),
+        Notice::Reauth { email } => (
+            tr!("Нужно войти снова", "Sign in again"),
+            tr!("{email}: доступ к календарю отозван", "{email}: calendar access was revoked"),
+        ),
+        Notice::Conflict { title } => (
+            tr!("Изменение не сохранено", "Change not saved"),
+            tr!("«{title}» изменили на сервере — показана свежая версия", "“{title}” was changed on the server — showing the latest version"),
+        ),
         Notice::Error { message } => ("Kwalendar".into(), message.clone()),
     };
     let app2 = app.clone();

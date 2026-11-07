@@ -40,7 +40,7 @@ fn apply_input(row: &mut EventRow, input: &EventInput) -> Result<()> {
     row.description = input.description.clone().filter(|s| !s.trim().is_empty());
     row.all_day = input.all_day;
     if input.all_day {
-        let sd = input.start_date.clone().ok_or_else(|| anyhow!("нет даты начала"))?;
+        let sd = input.start_date.clone().ok_or_else(|| anyhow!(crate::tr!("нет даты начала", "no start date")))?;
         let ed = input.end_date.clone().unwrap_or_else(|| sd.clone());
         let ed = if ed <= sd {
             chrono::NaiveDate::parse_from_str(&sd, "%Y-%m-%d")
@@ -54,7 +54,7 @@ fn apply_input(row: &mut EventRow, input: &EventInput) -> Result<()> {
         row.start_ts = None;
         row.end_ts = None;
     } else {
-        let s = input.start.ok_or_else(|| anyhow!("нет времени начала"))? / 1000;
+        let s = input.start.ok_or_else(|| anyhow!(crate::tr!("нет времени начала", "no start time")))? / 1000;
         let e = input.end.map(|e| e / 1000).unwrap_or(s + 3600).max(s);
         row.start_ts = Some(s);
         row.end_ts = Some(e);
@@ -95,9 +95,9 @@ impl Core {
         let c = self
             .db
             .calendar(account, cal)?
-            .ok_or_else(|| anyhow!("календарь не найден"))?;
+            .ok_or_else(|| anyhow!(crate::tr!("календарь не найден", "calendar not found")))?;
         if !c.writable() {
-            bail!("Календарь «{}» только для чтения", c.summary);
+            bail!(crate::tr!("Календарь «{}» только для чтения", "Calendar “{}” is read-only", c.summary));
         }
         Ok(c)
     }
@@ -150,18 +150,18 @@ impl Core {
         if let Some(r) = self.db.event(&t.account_id, &t.calendar_id, &t.event_id)? {
             return Ok(r);
         }
-        let master_id = t.master_id.as_deref().ok_or_else(|| anyhow!("событие не найдено"))?;
+        let master_id = t.master_id.as_deref().ok_or_else(|| anyhow!(crate::tr!("событие не найдено", "event not found")))?;
         let master = self
             .db
             .event(&t.account_id, &t.calendar_id, master_id)?
-            .ok_or_else(|| anyhow!("серия не найдена"))?;
+            .ok_or_else(|| anyhow!(crate::tr!("серия не найдена", "series not found")))?;
         let mut r = master.clone();
         r.id = t.event_id.clone();
         r.etag = None;
         r.recurrence = None;
         r.recurring_event_id = Some(master_id.to_string());
         if master.all_day {
-            let d = t.start_date.clone().ok_or_else(|| anyhow!("нет даты"))?;
+            let d = t.start_date.clone().ok_or_else(|| anyhow!(crate::tr!("нет даты", "no date")))?;
             let days = match (&master.start_date, &master.end_date) {
                 (Some(s), Some(e)) => {
                     let p = |x: &str| chrono::NaiveDate::parse_from_str(x, "%Y-%m-%d").ok();
@@ -177,7 +177,7 @@ impl Core {
             r.start_date = Some(d);
             r.end_date = Some((sd + chrono::Duration::days(days)).to_string());
         } else {
-            let s = t.start.ok_or_else(|| anyhow!("нет времени"))? / 1000;
+            let s = t.start.ok_or_else(|| anyhow!(crate::tr!("нет времени", "no time")))? / 1000;
             let dur = master.end_ts.unwrap_or(0) - master.start_ts.unwrap_or(0);
             r.original_start_ts = Some(s);
             r.start_ts = Some(s);
@@ -246,21 +246,24 @@ impl Core {
         let mut m = self
             .db
             .event(&target.account_id, &target.calendar_id, &master_id)?
-            .ok_or_else(|| anyhow!("серия не найдена"))?;
+            .ok_or_else(|| anyhow!(crate::tr!("серия не найдена", "series not found")))?;
         if m.recurrence.is_none() {
-            bail!("событие не повторяется");
+            bail!(crate::tr!("событие не повторяется", "the event does not repeat"));
         }
         let keep_times = (m.all_day, m.start_ts, m.end_ts, m.start_date.clone(), m.end_date.clone());
         apply_input(&mut m, &input)?;
         if input.all_day != keep_times.0 {
-            bail!("для серии нельзя переключить «весь день» — измените одно событие или создайте серию заново");
+            bail!(crate::tr!(
+                "для серии нельзя переключить «весь день» — измените одно событие или создайте серию заново",
+                "“All day” cannot be switched for a whole series — change one event or create the series again"
+            ));
         }
         if input.all_day {
             let p = |s: &str| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok();
             let occ = target.start_date.as_deref().and_then(p);
             let new = input.start_date.as_deref().and_then(p);
             let (Some(ms), Some(me)) = (keep_times.3.as_deref().and_then(p), keep_times.4.as_deref().and_then(p)) else {
-                bail!("нет дат серии");
+                bail!(crate::tr!("нет дат серии", "the series has no dates"));
             };
             let shift = match (occ, new) {
                 (Some(o), Some(n)) => n - o,
@@ -273,7 +276,7 @@ impl Core {
             m.start_date = Some((ms + shift).to_string());
             m.end_date = Some((ms + shift + len).to_string());
         } else {
-            let (Some(ms), Some(_)) = (keep_times.1, keep_times.2) else { bail!("нет времени серии") };
+            let (Some(ms), Some(_)) = (keep_times.1, keep_times.2) else { bail!(crate::tr!("нет времени серии", "the series has no times")) };
             let occ = target.start.map(|s| s / 1000).unwrap_or(ms);
             let new_start = input.start.map(|s| s / 1000).unwrap_or(occ);
             let new_end = input.end.map(|e| e / 1000).unwrap_or(new_start + 3600);
@@ -315,7 +318,7 @@ impl Core {
         self.writable_calendar(&target.account_id, &target.calendar_id)?;
         let mut row = self.row_for(&target)?;
         if row.all_day {
-            bail!("перетаскивание целого дня пока не поддерживается");
+            bail!(crate::tr!("перетаскивание целого дня пока не поддерживается", "dragging all-day events is not supported yet"));
         }
         row.start_ts = Some(start / 1000);
         row.end_ts = Some((end / 1000).max(start / 1000 + 300));
@@ -375,7 +378,7 @@ impl Core {
     /// Answers an invitation: accepted | declined | tentative.
     pub fn respond(&self, target: EditTarget, response: &str) -> Result<()> {
         if !matches!(response, "accepted" | "declined" | "tentative") {
-            bail!("неизвестный ответ");
+            bail!(crate::tr!("неизвестный ответ", "unknown response"));
         }
         let mut row = self.row_for(&target)?;
         let mut found = false;
@@ -386,7 +389,7 @@ impl Core {
             }
         }
         if !found {
-            bail!("вы не участник этого события");
+            bail!(crate::tr!("вы не участник этого события", "you are not a guest of this event"));
         }
         row.pending = true;
         let attendees: Vec<Value> = row

@@ -2,7 +2,8 @@ import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js'
 import { api, type Calendar } from '../api';
 import { store } from '../store';
 import { I } from '../icons';
-import { addDays, addMonths, isoDate, monthYear, sameDay, startOfMonth, startOfWeek, WEEKDAYS } from '../dates';
+import { addDays, addMonths, isoDate, monthYear, sameDay, startOfMonth, startOfWeek, weekdays } from '../dates';
+import { t } from '../i18n';
 
 function MiniMonth() {
   const [month, setMonth] = createSignal(startOfMonth(store.anchor()));
@@ -31,16 +32,16 @@ function MiniMonth() {
       <div class="mini-head">
         <span>{monthYear(month())}</span>
         <div style={{ display: 'flex' }}>
-          <button class="ib sm" aria-label="Предыдущий месяц" onClick={() => setMonth(addMonths(month(), -1))}>
+          <button class="ib sm" aria-label={t().prevMonth} onClick={() => setMonth(addMonths(month(), -1))}>
             {I.left({ size: 14 })}
           </button>
-          <button class="ib sm" aria-label="Следующий месяц" onClick={() => setMonth(addMonths(month(), 1))}>
+          <button class="ib sm" aria-label={t().nextMonth} onClick={() => setMonth(addMonths(month(), 1))}>
             {I.right({ size: 14 })}
           </button>
         </div>
       </div>
       <div class="mini-grid">
-        <For each={WEEKDAYS}>{(w) => <div class="md head">{w}</div>}</For>
+        <For each={weekdays()}>{(w) => <div class="md head">{w}</div>}</For>
         <For each={cells()}>
           {(c) => (
             <button
@@ -63,7 +64,7 @@ function CalendarRow(props: { cal: Calendar }) {
     <button
       class="cal"
       aria-pressed={props.cal.selected}
-      title={props.cal.accessRole === 'reader' ? `${store.calendarLabel(props.cal)} · только чтение` : store.calendarLabel(props.cal)}
+      title={props.cal.accessRole === 'reader' ? `${store.calendarLabel(props.cal)} · ${t().readOnly}` : store.calendarLabel(props.cal)}
       onClick={() => store.run(api.setCalendarSelected(props.cal.accountId, props.cal.id, !props.cal.selected))}
     >
       <span class="sq" classList={{ off: !props.cal.selected }} style={{ background: props.cal.color }}>
@@ -118,7 +119,7 @@ export function Sidebar() {
   return (
     <aside class="sidebar">
       <button class="btn create-btn" onClick={create}>
-        {I.plus({ size: 16, stroke: 2.2, node: [19, 5, 2.4] })}Создать событие
+        {I.plus({ size: 16, stroke: 2.2, node: [19, 5, 2.4] })}{t().createEvent}
         <span class="kbd" style={{ 'margin-left': '4px' }}>N</span>
       </button>
       <MiniMonth />
@@ -141,7 +142,7 @@ export function Sidebar() {
               <Show when={!collapsed().has(g.account.id)}>
                 <Show when={g.account.status === 'reauth'}>
                   <button class="cal warn-chip" onClick={() => store.setSettings(true)}>
-                    Нужно войти снова →
+                    {t().reauthChip}
                   </button>
                 </Show>
                 <For each={g.cals}>{(c) => <CalendarRow cal={c} />}</For>
@@ -152,9 +153,9 @@ export function Sidebar() {
       </div>
       <div class="side-foot">
         <span style={{ flex: 1 }}>
-          {groups().length} акк. · {total()} календ.
+          {t().sideFoot(groups().length, total())}
         </span>
-        <button class="ib sm" aria-label="Свернуть сайдбар (Ctrl+B)" title="Свернуть (Ctrl+B)" onClick={() => store.setSidebar(false)}>
+        <button class="ib sm" aria-label={t().collapseSidebar} title={t().collapseTitle} onClick={() => store.setSidebar(false)}>
           {I.sidebar({ size: 15 })}
         </button>
       </div>

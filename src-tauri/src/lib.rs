@@ -4,16 +4,46 @@ mod updater;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use kw_core::{Account, Config, Core, CoreEvent, DeleteScope, EditTarget, EventInput, Instance, Notice, Snapshot};
+use kw_core::{tr, Account, Config, Core, CoreEvent, DeleteScope, EditTarget, EventInput, Instance, Notice, Snapshot};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent, Wry};
 use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_opener::OpenerExt as _;
 
 pub(crate) struct AppState {
     pub(crate) core: Arc<Core>,
     start_hidden: AtomicBool,
+}
+
+/// Tray menu entries, kept to relabel them when the language changes.
+struct TrayMenu {
+    open: MenuItem<Wry>,
+    new: MenuItem<Wry>,
+    sync: MenuItem<Wry>,
+    mute: MenuItem<Wry>,
+    quit: MenuItem<Wry>,
+}
+
+impl TrayMenu {
+    fn labels() -> [String; 5] {
+        [
+            tr!("Открыть Kwalendar", "Open Kwalendar"),
+            tr!("Новое событие…", "New event…"),
+            tr!("Синхронизировать", "Sync now"),
+            tr!("Тишина на 1 час", "Do not disturb for 1 hour"),
+            tr!("Выход", "Quit"),
+        ]
+    }
+
+    fn relabel(&self) {
+        let [open, new, sync, mute, quit] = Self::labels();
+        let _ = self.open.set_text(open);
+        let _ = self.new.set_text(new);
+        let _ = self.sync.set_text(sync);
+        let _ = self.mute.set_text(mute);
+        let _ = self.quit.set_text(quit);
+    }
 }
 
 type Res<T> = Result<T, String>;
@@ -98,12 +128,20 @@ fn respond(s: State<AppState>, target: EditTarget, response: String) -> Res<()> 
 }
 
 #[tauri::command]
-fn set_config(s: State<AppState>, mut config: Config) -> Res<()> {
+fn set_config(app: AppHandle, s: State<AppState>, mut config: Config) -> Res<()> {
     let current = s.core.config();
     if config.google_client_secret == "••••" {
         config.google_client_secret = current.google_client_secret;
     }
-    s.core.set_config(config).map_err(err)
+    let lang_changed = config.language != current.language;
+    s.core.set_config(config).map_err(err)?;
+    if lang_changed {
+        if let Some(menu) = app.try_state::<TrayMenu>() {
+            menu.relabel();
+        }
+        update_tray_tooltip(&app, &s.core);
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -144,7 +182,7 @@ fn test_notification(app: AppHandle, s: State<AppState>) {
         calendar_id: String::new(),
         event_id: "test".into(),
         master_id: None,
-        title: "Проверка уведомлений".into(),
+        title: tr!("Проверка уведомлений", "Notification test"),
         start: now + 10 * 60_000,
         end: now + 40 * 60_000,
         all_day: false,
@@ -182,7 +220,7 @@ fn update_tray_tooltip(app: &AppHandle, core: &Core) {
                 .single()
                 .map(|d| d.format("%H:%M").to_string())
                 .unwrap_or_default();
-            format!("Kwalendar — далее {t} {}", i.title)
+            tr!("Kwalendar — далее {t} {}", "Kwalendar — next {t} {}", i.title)
         }
         None => "Kwalendar".into(),
     };
@@ -223,11 +261,12 @@ fn handle_core_event(app: &AppHandle, ev: CoreEvent) {
 }
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Открыть Kwalendar", true, None::<&str>)?;
-    let new = MenuItem::with_id(app, "new", "Новое событие…", true, Some("Ctrl+Alt+K"))?;
-    let sync = MenuItem::with_id(app, "sync", "Синхронизировать", true, None::<&str>)?;
-    let mute = MenuItem::with_id(app, "mute", "Тишина на 1 час", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
+    let [l_open, l_new, l_sync, l_mute, l_quit] = TrayMenu::labels();
+    let open = MenuItem::with_id(app, "open", l_open, true, None::<&str>)?;
+    let new = MenuItem::with_id(app, "new", l_new, true, Some("Ctrl+Alt+K"))?;
+    let sync = MenuItem::with_id(app, "sync", l_sync, true, None::<&str>)?;
+    let mute = MenuItem::with_id(app, "mute", l_mute, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", l_quit, true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(app, &[&open, &new, &sep, &sync, &mute, &sep2, &quit])?;
@@ -262,6 +301,7 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             }
         })
         .build(app)?;
+    app.manage(TrayMenu { open, new, sync, mute, quit });
     Ok(())
 }
 

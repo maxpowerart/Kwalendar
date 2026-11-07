@@ -1,6 +1,7 @@
 import { batch, createMemo, createRoot, createSignal } from 'solid-js';
 import { api, type Calendar, type Instance, type Notice, type Snapshot } from './api';
 import { addDays, addMonths, DAY, startOfDay, startOfMonth, startOfWeek } from './dates';
+import { isUntitled, t } from './i18n';
 
 export type View = 'day' | 'week' | 'month' | 'agenda';
 
@@ -126,13 +127,13 @@ function createStore() {
   function noticeBanner(n: Notice) {
     switch (n.kind) {
       case 'moved':
-        return banner(`«${n.title}» перенесено`, 'info');
+        return banner(t().moved(n.title), 'info');
       case 'invite':
-        return banner(`Новое приглашение: «${n.title}»`, 'info');
+        return banner(t().invite(n.title), 'info');
       case 'conflict':
-        return banner(`«${n.title}» изменили на сервере — показана свежая версия`, 'warn');
+        return banner(t().conflict(n.title), 'warn');
       case 'reauth':
-        return banner(`${n.email}: нужно войти снова`, 'warn', { label: 'Войти', run: () => setSettings(true) });
+        return banner(t().reauth(n.email), 'warn', { label: t().signIn, run: () => setSettings(true) });
       case 'error':
         return banner(n.message, 'error');
     }
@@ -152,7 +153,7 @@ function createStore() {
   const calendarLabel = (c: Calendar | undefined): string => {
     if (!c) return '';
     const acc = snap()?.accounts.find((a) => a.id === c.accountId);
-    return c.primary && (c.summary === acc?.email || c.summary === c.id) ? 'Основной' : c.summary;
+    return c.primary && (c.summary === acc?.email || c.summary === c.id) ? t().primaryCalendar : c.summary;
   };
   const calendarOf = (accountId: string, id: string): Calendar | undefined =>
     calendars().find((c) => c.accountId === accountId && c.id === id);
@@ -164,7 +165,7 @@ function createStore() {
   function newDraft(start: number, end: number, allDay = false, title = ''): Draft | null {
     const cal = defaultCalendar();
     if (!cal) {
-      banner('Сначала подключите аккаунт Google', 'warn', { label: 'Настройки', run: () => setSettings(true) });
+      banner(t().connectFirst, 'warn', { label: t().settings, run: () => setSettings(true) });
       return null;
     }
     return {
@@ -189,7 +190,7 @@ function createStore() {
       source: i,
       accountId: i.accountId,
       calendarId: i.calendarId,
-      title: i.title === '(без названия)' ? '' : i.title,
+      title: isUntitled(i.title) ? '' : i.title,
       allDay: i.allDay,
       start: i.start,
       end: i.end,

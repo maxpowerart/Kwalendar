@@ -2,31 +2,36 @@
 import type { Account, Calendar, EditTarget, EventInput, Instance, Snapshot } from './api';
 import { addDays, isoDate, startOfDay, startOfWeek } from './dates';
 
-// Preview knobs for screenshots: ?view=month&theme=light&select=Дизайн
+// Preview knobs for screenshots: ?view=month&theme=light&lang=en&select=design (see main.tsx)
 const urlParam = (k: string) => new URLSearchParams(location.search).get(k);
+
+// Demo data in the UI language (set once at load; ?lang=ru|en overrides the browser's).
+const langParam = urlParam('lang');
+const EN = langParam ? langParam === 'en' : !/^ru\b/i.test(navigator.language);
+const L = (ru: string, en: string) => (EN ? en : ru);
 
 const listeners = new Map<string, Set<(p: unknown) => void>>();
 const emit = (event: string, payload: unknown = null) => listeners.get(event)?.forEach((cb) => cb(payload));
 
 const accounts: Account[] = [
-  { id: 'a1', email: 'me@gmail.com', name: 'Личный', color: '#A57CF0', status: 'ok', error: null, lastSync: Date.now() },
-  { id: 'a2', email: 'me@company.com', name: 'Работа', color: '#5B8DEF', status: 'ok', error: null, lastSync: Date.now() },
-  { id: 'a3', email: 'family@gmail.com', name: 'Семья', color: '#E5604F', status: 'reauth', error: 'Доступ отозван', lastSync: Date.now() - 7200_000 },
+  { id: 'a1', email: 'me@gmail.com', name: L('Личный', 'Personal'), color: '#A57CF0', status: 'ok', error: null, lastSync: Date.now() },
+  { id: 'a2', email: 'me@company.com', name: L('Работа', 'Work'), color: '#5B8DEF', status: 'ok', error: null, lastSync: Date.now() },
+  { id: 'a3', email: 'family@gmail.com', name: L('Семья', 'Family'), color: '#E5604F', status: 'reauth', error: L('Доступ отозван', 'Access revoked'), lastSync: Date.now() - 7200_000 },
 ];
 
 const cal = (accountId: string, id: string, summary: string, color: string, primary = false, role = 'owner', selected = true): Calendar => ({
-  accountId, id, summary, color, selected, accessRole: role, primary, timeZone: 'Europe/Moscow', defaultReminders: [10],
+  accountId, id, summary, color, selected, accessRole: role, primary, timeZone: L('Europe/Moscow', 'Europe/London'), defaultReminders: [10],
 });
 
 const calendars: Calendar[] = [
-  cal('a1', 'personal', 'Личное', '#C37BE8', true),
-  cal('a1', 'sport', 'Спорт', '#3DC28B'),
-  cal('a1', 'bdays', 'Дни рождения', '#E85D8A', false, 'reader'),
-  cal('a2', 'work', 'Основной', '#3D8BD8', true),
-  cal('a2', 'team', 'Команда', '#2EC4D6', false, 'writer'),
-  cal('a2', 'releases', 'Релизы', '#E8C13D', false, 'reader'),
-  cal('a3', 'family', 'Общий', '#E8665A', true),
-  cal('a3', 'holidays', 'Праздники России', '#858792', false, 'reader', false),
+  cal('a1', 'personal', L('Личное', 'Personal'), '#C37BE8', true),
+  cal('a1', 'sport', L('Спорт', 'Sport'), '#3DC28B'),
+  cal('a1', 'bdays', L('Дни рождения', 'Birthdays'), '#E85D8A', false, 'reader'),
+  cal('a2', 'work', L('Основной', 'Main'), '#3D8BD8', true),
+  cal('a2', 'team', L('Команда', 'Team'), '#2EC4D6', false, 'writer'),
+  cal('a2', 'releases', L('Релизы', 'Releases'), '#E8C13D', false, 'reader'),
+  cal('a3', 'family', L('Общий', 'Shared'), '#E8665A', true),
+  cal('a3', 'holidays', L('Праздники России', 'UK holidays'), '#858792', false, 'reader', false),
 ];
 
 interface Tpl {
@@ -46,24 +51,24 @@ interface Tpl {
 
 const W = [0, 1, 2, 3, 4];
 let templates: Tpl[] = [
-  { id: 'standup', cal: 'work', title: 'Стендап', days: W, start: '09:30', end: '10:00', meet: true, attendees: 6 },
-  { id: 'plan', cal: 'work', title: 'Планирование спринта', days: [0], start: '11:00', end: '12:30', attendees: 8 },
-  { id: 'gym', cal: 'sport', title: 'Зал', days: [0, 3], start: '19:00', end: '20:00' },
-  { id: 'oneone', cal: 'work', title: '1:1 с Ильёй', days: [1], start: '14:00', end: '15:00', meet: true, attendees: 2 },
-  { id: 'focus', cal: 'team', title: 'Фокус-время', days: [1, 3], start: '16:00', end: '17:30' },
-  { id: 'lunch', cal: 'personal', title: 'Обед с Катей', days: [2], start: '12:00', end: '13:00', location: 'Кафе «Пушкин»' },
-  { id: 'interview', cal: 'work', title: 'Интервью: Frontend', days: [2], start: '15:00', end: '16:00', meet: true, attendees: 3 },
-  { id: 'review', cal: 'team', title: 'Код-ревью', days: [3], start: '10:00', end: '11:00' },
-  { id: 'mkt', cal: 'work', title: 'Синк с маркетингом', days: [3], start: '13:00', end: '14:00', attendees: 4 },
-  { id: 'vendor', cal: 'personal', title: 'Звонок подрядчику', days: [3], start: '13:30', end: '14:30' },
-  { id: 'design', cal: 'work', title: 'Дизайн-ревью Kwalendar', days: [3], start: '15:00', end: '16:30', meet: true, attendees: 5 },
-  { id: 'retro', cal: 'team', title: 'Ретро', days: [3], start: '17:30', end: '18:30' },
-  { id: 'demo', cal: 'work', title: 'Демо спринта', days: [4], start: '11:00', end: '12:00', location: 'Переговорная «Байкал»' },
-  { id: 'cinema', cal: 'personal', title: 'Кино', days: [4], start: '18:30', end: '20:00' },
-  { id: 'run', cal: 'sport', title: 'Пробежка', days: [5], start: '10:00', end: '11:30', location: 'Парк Горького' },
-  { id: 'family', cal: 'family', title: 'Семейный обед', days: [6], start: '13:00', end: '15:00' },
-  { id: 'freeze', cal: 'releases', title: 'Заморозка релиза 2.4', days: [2], allDaySpan: 2, weekOffset: 0 },
-  { id: 'bday', cal: 'bdays', title: 'ДР Ани', days: [5], allDaySpan: 1, weekOffset: 0 },
+  { id: 'standup', cal: 'work', title: L('Стендап', 'Stand-up'), days: W, start: '09:30', end: '10:00', meet: true, attendees: 6 },
+  { id: 'plan', cal: 'work', title: L('Планирование спринта', 'Sprint planning'), days: [0], start: '11:00', end: '12:30', attendees: 8 },
+  { id: 'gym', cal: 'sport', title: L('Зал', 'Gym'), days: [0, 3], start: '19:00', end: '20:00' },
+  { id: 'oneone', cal: 'work', title: L('1:1 с Ильёй', '1:1 with Alex'), days: [1], start: '14:00', end: '15:00', meet: true, attendees: 2 },
+  { id: 'focus', cal: 'team', title: L('Фокус-время', 'Focus time'), days: [1, 3], start: '16:00', end: '17:30' },
+  { id: 'lunch', cal: 'personal', title: L('Обед с Катей', 'Lunch with Kate'), days: [2], start: '12:00', end: '13:00', location: L('Кафе «Пушкин»', 'The Corner Café') },
+  { id: 'interview', cal: 'work', title: L('Интервью: Frontend', 'Interview: Frontend'), days: [2], start: '15:00', end: '16:00', meet: true, attendees: 3 },
+  { id: 'review', cal: 'team', title: L('Код-ревью', 'Code review'), days: [3], start: '10:00', end: '11:00' },
+  { id: 'mkt', cal: 'work', title: L('Синк с маркетингом', 'Marketing sync'), days: [3], start: '13:00', end: '14:00', attendees: 4 },
+  { id: 'vendor', cal: 'personal', title: L('Звонок подрядчику', 'Call the contractor'), days: [3], start: '13:30', end: '14:30' },
+  { id: 'design', cal: 'work', title: L('Дизайн-ревью Kwalendar', 'Kwalendar design review'), days: [3], start: '15:00', end: '16:30', meet: true, attendees: 5 },
+  { id: 'retro', cal: 'team', title: L('Ретро', 'Retro'), days: [3], start: '17:30', end: '18:30' },
+  { id: 'demo', cal: 'work', title: L('Демо спринта', 'Sprint demo'), days: [4], start: '11:00', end: '12:00', location: L('Переговорная «Байкал»', 'Room “Thames”') },
+  { id: 'cinema', cal: 'personal', title: L('Кино', 'Cinema'), days: [4], start: '18:30', end: '20:00' },
+  { id: 'run', cal: 'sport', title: L('Пробежка', 'Run'), days: [5], start: '10:00', end: '11:30', location: L('Парк Горького', 'Hyde Park') },
+  { id: 'family', cal: 'family', title: L('Семейный обед', 'Family lunch'), days: [6], start: '13:00', end: '15:00' },
+  { id: 'freeze', cal: 'releases', title: L('Заморозка релиза 2.4', 'Release 2.4 freeze'), days: [2], allDaySpan: 2, weekOffset: 0 },
+  { id: 'bday', cal: 'bdays', title: L('ДР Ани', 'Anna’s birthday'), days: [5], allDaySpan: 1, weekOffset: 0 },
 ];
 const created: Instance[] = [];
 const removed = new Set<string>();
@@ -81,7 +86,9 @@ function make(t: Tpl, day: Date): Instance {
   const allDay = !!t.allDaySpan;
   const start = allDay ? startOfDay(day).getTime() : at(day, t.start!);
   const end = allDay ? addDays(startOfDay(day), t.allDaySpan!).getTime() : at(day, t.end!);
-  const names = ['Илья Петров', 'Катя Смирнова', 'Петя Орлов', 'Оля Иванова', 'Дима Ким', 'Аня Лис', 'Саша Ли'];
+  const names = EN
+    ? ['Alex Turner', 'Kate Smith', 'Peter Owen', 'Olivia Brown', 'David Kim', 'Anna Fox', 'Sam Lee']
+    : ['Илья Петров', 'Катя Смирнова', 'Петя Орлов', 'Оля Иванова', 'Дима Ким', 'Аня Лис', 'Саша Ли'];
   const eventId = `${t.id}_${isoDate(day).replaceAll('-', '')}`;
   return {
     key: `${c.accountId}|${c.id}|${eventId}`,
@@ -96,7 +103,7 @@ function make(t: Tpl, day: Date): Instance {
     startDate: allDay ? isoDate(start) : null,
     endDate: allDay ? isoDate(end) : null,
     location: t.location ?? null,
-    description: t.meet ? 'Повестка в документе. Ссылка: https://meet.google.com/abc-defg-hij' : null,
+    description: t.meet ? L('Повестка в документе. Ссылка: ', 'Agenda in the doc. Link: ') + 'https://meet.google.com/abc-defg-hij' : null,
     meetLink: t.meet ? 'https://meet.google.com/abc-defg-hij' : null,
     htmlLink: 'https://calendar.google.com/',
     color: c.color,
@@ -149,7 +156,7 @@ function inputToInstance(input: EventInput, base?: Instance): Instance {
     ...(base ?? make({ id, cal: c.id, title: input.title, days: [], start: '00:00', end: '01:00' }, new Date())),
     key: base?.key ?? `${c.accountId}|${c.id}|${id}`,
     eventId: id,
-    title: input.title || '(без названия)',
+    title: input.title || L('(без названия)', '(no title)'),
     start,
     end,
     allDay: input.allDay,
@@ -182,6 +189,7 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
           sidebar: true,
           dayStartHour: 8,
           theme: (urlParam('theme') as 'system' | 'dark' | 'light' | null) ?? 'system',
+          language: langParam ?? 'system',
           relayUrl: '',
           relayKey: '',
           checkUpdates: true,
@@ -191,6 +199,7 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
         mutedUntil: 0,
         pushActive: false,
         builtinClient: true,
+        systemLang: navigator.language,
       };
       return s;
     }
@@ -252,12 +261,12 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
       return null;
     }
     case 'add_account':
-      throw new Error('В браузерном превью вход в Google недоступен — запустите приложение через `npm run tauri dev`');
+      throw new Error(L('В браузерном превью вход в Google недоступен — запустите приложение через `npm run tauri dev`', 'Google sign-in is not available in the browser preview — run the app with `npm run tauri dev`'));
     case 'update_info':
     case 'update_check':
       return {
         current: '0.1.0',
-        available: { version: '0.2.0', notes: 'Новое\n- Светлая тема и фирменный стиль\n- Перетаскивание событий между днями месяца\n\nИсправлено\n- Напоминания после сна иногда приходили дважды', url: 'Kwalendar_0.2.0_x64-setup.exe', sha256: '0'.repeat(64), published: '2026-11-02', manifestUrl: 'https://github.com/maxpowerart/Kwalendar/releases/download/v0.2.0/update.json' },
+        available: { version: '0.2.0', notes: L('Новое\n- Светлая тема и фирменный стиль\n- Перетаскивание событий между днями месяца\n\nИсправлено\n- Напоминания после сна иногда приходили дважды', 'New\n- Light theme and the Kwak look\n- Drag events between days in the month view\n\nFixed\n- Reminders after sleep sometimes came twice'), url: 'Kwalendar_0.2.0_x64-setup.exe', sha256: '0'.repeat(64), published: '2026-11-02', manifestUrl: 'https://github.com/maxpowerart/Kwalendar/releases/download/v0.2.0/update.json' },
         withdrawn: null,
         checkedAt: Date.now(),
         error: null,
@@ -265,13 +274,13 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
     case 'update_list':
       return [
         { version: '0.2.0', published: '2026-11-02', prerelease: false, withdrawn: false, reason: '', manifestUrl: 'm2' },
-        { version: '0.1.1', published: '2026-10-28', prerelease: false, withdrawn: true, reason: 'ломает синхронизацию повторов', manifestUrl: 'm11' },
+        { version: '0.1.1', published: '2026-10-28', prerelease: false, withdrawn: true, reason: L('ломает синхронизацию повторов', 'breaks sync of recurring events'), manifestUrl: 'm11' },
         { version: '0.1.0', published: '2026-10-22', prerelease: false, withdrawn: false, reason: '', manifestUrl: 'm1' },
       ];
     case 'update_manifest':
-      return { version: args.url === 'm1' ? '0.1.0' : args.url === 'm11' ? '0.1.1' : '0.2.0', notes: 'Описание версии', url: 'x.exe', sha256: '0'.repeat(64), published: null, manifestUrl: args.url };
+      return { version: args.url === 'm1' ? '0.1.0' : args.url === 'm11' ? '0.1.1' : '0.2.0', notes: L('Описание версии', 'Release notes'), url: 'x.exe', sha256: '0'.repeat(64), published: null, manifestUrl: args.url };
     case 'update_install':
-      throw new Error('В браузерном превью установка недоступна');
+      throw new Error(L('В браузерном превью установка недоступна', 'Installing is not available in the browser preview'));
     case 'autostart_get':
       return true;
     default:

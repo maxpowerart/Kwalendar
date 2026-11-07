@@ -15,6 +15,11 @@ pub enum Occurrence {
     Day(NaiveDate),
 }
 
+/// Title shown for events without a name, in the UI language.
+pub fn untitled() -> String {
+    crate::tr!("(без названия)", "(no title)")
+}
+
 fn parse_tz(name: Option<&str>) -> chrono_tz::Tz {
     name.and_then(|n| n.parse().ok()).unwrap_or(chrono_tz::UTC)
 }
@@ -147,7 +152,7 @@ pub fn to_instance(e: &EventRow, cal: &Calendar, event_id: String, start: Occurr
         calendar_id: e.calendar_id.clone(),
         master_id: e.recurring_event_id.clone().or_else(|| e.recurrence.as_ref().map(|_| e.id.clone())),
         event_id,
-        title: e.summary.clone().filter(|s| !s.trim().is_empty()).unwrap_or_else(|| "(без названия)".into()),
+        title: e.summary.clone().filter(|s| !s.trim().is_empty()).unwrap_or_else(untitled),
         start: start_ms,
         end: end_ms,
         all_day: e.all_day,

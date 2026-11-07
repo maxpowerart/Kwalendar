@@ -15,6 +15,7 @@ import { initUpdates, UpdateDialog } from './components/Updates';
 import { I } from './icons';
 import { startOfDay } from './dates';
 import { setTheme } from './theme';
+import { applyLang, t } from './i18n';
 import mark from './assets/mark.svg';
 
 function Onboarding() {
@@ -23,20 +24,20 @@ function Onboarding() {
     <div class="empty">
       <div class="box">
         <img src={mark} alt="Kwalendar" width="64" height="70" />
-        <h1>Подключите Google Календарь</h1>
+        <h1>{t().obTitle}</h1>
         <Show
           when={hasClient()}
           fallback={
             <>
-              <p class="muted">Kwalendar работает напрямую с Google API, без посредников. Нужен ваш OAuth-клиент — один раз, пара минут.</p>
+              <p class="muted">{t().obOwnClient}</p>
               <GoogleClientForm />
             </>
           }
         >
-          <p class="muted">Можно подключить несколько аккаунтов — личный, рабочий, семейный. Календари всех аккаунтов показываются вместе.</p>
+          <p class="muted">{t().obAccounts}</p>
           <div>
             <button class="btn primary" style={{ height: '38px' }} onClick={() => store.setSettings(true)}>
-              {I.plus({ size: 14, stroke: 2.4 })}Добавить аккаунт Google
+              {I.plus({ size: 14, stroke: 2.4 })}{t().addGoogleAccount}
             </button>
           </div>
         </Show>
@@ -57,7 +58,7 @@ function Banners() {
                 {b.action!.label}
               </button>
             </Show>
-            <button class="ib sm" aria-label="Скрыть" onClick={() => store.setBanners((x) => x.filter((y) => y.id !== b.id))}>
+            <button class="ib sm" aria-label={t().hide} onClick={() => store.setBanners((x) => x.filter((y) => y.id !== b.id))}>
               {I.close({ size: 13 })}
             </button>
           </div>
@@ -79,6 +80,7 @@ export function App() {
   onMount(async () => {
     try {
       const s = await api.snapshot();
+      applyLang(s.config.language, s.systemLang);
       store.setSnap(s);
       store.setViewSig((['day', 'week', 'month', 'agenda'].includes(s.config.view) ? s.config.view : 'week') as View);
       store.setSidebarSig(s.config.sidebar);
@@ -107,6 +109,10 @@ export function App() {
 
   createEffect(on(store.range, () => void store.load(), { defer: true }));
   createEffect(() => setTheme(store.snap()?.config.theme ?? 'system'));
+  createEffect(() => {
+    const s = store.snap();
+    if (s) applyLang(s.config.language, s.systemLang);
+  });
 
   const onKey = (e: KeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName;

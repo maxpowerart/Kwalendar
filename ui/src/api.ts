@@ -73,6 +73,8 @@ export interface Config {
   sidebar: boolean;
   dayStartHour: number;
   theme: 'system' | 'dark' | 'light';
+  /** 'system' | 'ru' | 'en' */
+  language: string;
   checkUpdates: boolean;
   skippedVersion: string;
   relayUrl: string;
@@ -94,6 +96,8 @@ export interface Snapshot {
   mutedUntil: number;
   pushActive: boolean;
   builtinClient: boolean;
+  /** Windows display language resolved by the core: 'ru' | 'en'. */
+  systemLang: string;
 }
 
 export interface EventInput {

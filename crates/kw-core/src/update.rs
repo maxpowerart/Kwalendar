@@ -165,7 +165,7 @@ pub async fn fetch_manifest(http: &reqwest::Client, url: &str) -> Result<Release
 }
 
 pub async fn list_releases(http: &reqwest::Client, ch: &Channel) -> Result<Vec<Listed>> {
-    let api = ch.api.as_deref().ok_or_else(|| anyhow!("канал обновлений не на GitHub — список версий недоступен"))?;
+    let api = ch.api.as_deref().ok_or_else(|| anyhow!(crate::tr!("канал обновлений не на GitHub — список версий недоступен", "the update channel is not on GitHub — the version list is unavailable")))?;
     let resp = http
         .get(api)
         .header("Accept", "application/vnd.github+json")
@@ -202,7 +202,7 @@ pub async fn download(
     mut progress: impl FnMut(u64, u64),
 ) -> Result<PathBuf> {
     if rel.sha256.len() != 64 {
-        bail!("в update.json нет SHA-256 — установка отменена");
+        bail!(crate::tr!("в update.json нет SHA-256 — установка отменена", "update.json has no SHA-256 — installation cancelled"));
     }
     let url = resolve_url(&rel.manifest_url, &rel.url);
     std::fs::create_dir_all(dir)?;
@@ -229,7 +229,7 @@ pub async fn download(
     let got = format!("{:x}", hasher.finalize());
     if !got.eq_ignore_ascii_case(rel.sha256.trim()) {
         let _ = std::fs::remove_file(&tmp);
-        bail!("контрольная сумма не совпала — файл повреждён или подменён");
+        bail!(crate::tr!("контрольная сумма не совпала — файл повреждён или подменён", "checksum mismatch — the file is damaged or was replaced"));
     }
     std::fs::rename(&tmp, &dest)?;
     Ok(dest)
