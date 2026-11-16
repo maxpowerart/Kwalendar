@@ -152,7 +152,7 @@ export function App() {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
 
     const sel = store.selected();
-    // Layout-independent: e.code works on both QWERTY and ЙЦУКЕН.
+    // Layout-independent: e.code works on both QWERTY and the Russian (JCUKEN) layout.
     switch (e.code) {
       case 'KeyT':
         store.goto(startOfDay(new Date()));

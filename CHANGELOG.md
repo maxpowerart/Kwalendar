@@ -1,15 +1,15 @@
 # Changelog
 
-Each release's section is shown in Kwalendar's "Доступно обновление" dialog and on its GitHub
+Each release's section is shown in Kwalendar's "Update available" dialog and on its GitHub
 release page. The heading must be `## <version>` (the release workflow looks it up by version).
 
 ## 0.1.0
 
-Первая версия.
+First release.
 
-- Неделя, день, месяц и повестка; перетаскивание и растягивание событий, создание выделением.
-- Несколько аккаунтов Google; локальная база — окно открывается мгновенно, работает офлайн.
-- Инкрементальная синхронизация (batch), необязательный push через relay.
-- Напоминания Windows с кнопками «Присоединиться» и «Через 5 мин»; уведомления о переносах и приглашениях.
-- Быстрый ввод Ctrl+K на русском и английском, глобально — Ctrl+Alt+K.
-- Обновления из релизов GitHub: проверка, пропуск версии, установка любой версии и откат.
+- Week, day, month and agenda views; drag to move and resize events, drag on empty space to create.
+- Several Google accounts; local database — the window opens instantly and works offline.
+- Incremental sync (batched), optional push through the relay.
+- Windows reminders with "Join" and "In 5 min" buttons; notices about moved meetings and invitations.
+- Quick add with Ctrl+K in English and Russian, from anywhere with Ctrl+Alt+K.
+- Updates from GitHub releases: check, skip a version, install any version and roll back.

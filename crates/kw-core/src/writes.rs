@@ -499,7 +499,7 @@ mod tests {
         let core = test_core();
         core.db.upsert_account("acc", "me@x.com", None).unwrap();
         core.db
-            .upsert_calendar("acc", "cal", "Основной", "#5B8DEF", "owner", true, Some("Europe/Moscow"), &[10], true)
+            .upsert_calendar("acc", "cal", "Main", "#5B8DEF", "owner", true, Some("Europe/Moscow"), &[10], true)
             .unwrap();
         core
     }
@@ -508,7 +508,7 @@ mod tests {
         EventInput {
             account_id: "acc".into(),
             calendar_id: "cal".into(),
-            title: "Созвон".into(),
+            title: "Call".into(),
             all_day: false,
             start: Some(1792670400000),
             end: Some(1792672200000),
@@ -534,7 +534,7 @@ mod tests {
         assert_eq!(list[0].reminders, vec![10]);
 
         let mut inp = input();
-        inp.title = "Созвон с Петей".into();
+        inp.title = "Call with Peter".into();
         let target = EditTarget {
             account_id: "acc".into(),
             calendar_id: "cal".into(),
@@ -546,7 +546,7 @@ mod tests {
         core.update_event(target.clone(), inp).unwrap();
         let ob = core.db.outbox_for("acc").unwrap();
         assert_eq!(ob.len(), 1, "edit must fold into pending insert");
-        assert!(ob[0].payload.as_ref().unwrap().contains("Созвон с Петей"));
+        assert!(ob[0].payload.as_ref().unwrap().contains("Call with Peter"));
 
         core.delete_event(target, DeleteScope::This).unwrap();
         assert!(core.db.outbox_for("acc").unwrap().is_empty());
@@ -562,7 +562,7 @@ mod tests {
             id: "series1".into(),
             etag: Some("\"e\"".into()),
             status: "confirmed".into(),
-            summary: Some("Стендап".into()),
+            summary: Some("Stand-up".into()),
             start_ts: Some(1792391400),
             end_ts: Some(1792393200),
             time_zone: Some("Europe/Moscow".into()),
@@ -605,7 +605,7 @@ mod tests {
                 id: "s1".into(),
                 etag: Some("\"e\"".into()),
                 status: "confirmed".into(),
-                summary: Some("Стендап".into()),
+                summary: Some("Stand-up".into()),
                 start_ts: Some(1792391400),
                 end_ts: Some(1792393200),
                 time_zone: Some("Europe/Moscow".into()),
@@ -619,7 +619,7 @@ mod tests {
         let to = from + 7 * 86_400_000;
         let second = core.instances(from, to).unwrap()[1].clone();
         let mut inp = input();
-        inp.title = "Утренний синк".into();
+        inp.title = "Morning sync".into();
         // 09:30 → 10:00, 30 min → 45 min
         inp.start = Some(second.start + 1_800_000);
         inp.end = Some(second.start + 1_800_000 + 2_700_000);
@@ -638,7 +638,7 @@ mod tests {
         let list = core.instances(from, to).unwrap();
         assert_eq!(list.len(), 5);
         for i in &list {
-            assert_eq!(i.title, "Утренний синк");
+            assert_eq!(i.title, "Morning sync");
             assert_eq!((i.start / 1000 - 1792391400) % 86400, 1800, "every day moved by 30 min");
             assert_eq!(i.end - i.start, 2_700_000);
         }

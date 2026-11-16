@@ -69,7 +69,7 @@ export function parseQuick(input: string, calendars: Calendar[], now = new Date(
       if (h < 24 && m < 60) {
         const base = start ?? new Date(now);
         base.setHours(h, m, 0, 0);
-        // "в 9" said at 15:00 without a date means tomorrow.
+        // "at 9" said at 15:00 without a date means tomorrow.
         if (!start && base.getTime() < now.getTime()) base.setDate(base.getDate() + 1);
         start = base;
         hasTime = true;

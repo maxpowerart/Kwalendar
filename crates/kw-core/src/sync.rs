@@ -535,31 +535,31 @@ mod tests {
 
         // Full sync: a series, a single event and an invitation — no notices on first load.
         let first = vec![
-            json!({"id": "s", "status": "confirmed", "summary": "Стендап",
+            json!({"id": "s", "status": "confirmed", "summary": "Stand-up",
                    "start": {"dateTime": at(0), "timeZone": "Europe/Moscow"}, "end": {"dateTime": at(1)},
                    "recurrence": ["RRULE:FREQ=DAILY;COUNT=10"], "organizer": {"self": true}}),
-            json!({"id": "demo", "status": "confirmed", "summary": "Демо",
+            json!({"id": "demo", "status": "confirmed", "summary": "Demo",
                    "start": {"dateTime": at(2)}, "end": {"dateTime": at(3)}, "organizer": {"email": "ilya@x.com"}}),
         ];
         assert!(core.apply_items("acc", "cal", &first, false).unwrap().is_empty());
 
         // Incremental: demo moved by someone else, one standup cancelled, a new invite.
         let delta = vec![
-            json!({"id": "demo", "status": "confirmed", "summary": "Демо",
+            json!({"id": "demo", "status": "confirmed", "summary": "Demo",
                    "start": {"dateTime": at(4)}, "end": {"dateTime": at(5)}, "organizer": {"email": "ilya@x.com"}}),
             json!({"id": "s_x", "status": "cancelled", "recurringEventId": "s",
                    "originalStartTime": {"dateTime": at(24)}}),
-            json!({"id": "inv", "status": "confirmed", "summary": "Интервью",
+            json!({"id": "inv", "status": "confirmed", "summary": "Interview",
                    "start": {"dateTime": at(6)}, "end": {"dateTime": at(7)}, "organizer": {"email": "hr@x.com"},
                    "attendees": [{"email": "me@x.com", "self": true, "responseStatus": "needsAction"}]}),
         ];
         let notices = core.apply_items("acc", "cal", &delta, true).unwrap();
-        assert!(notices.iter().any(|n| matches!(n, Notice::Moved { title, .. } if title == "Демо")));
-        assert!(notices.iter().any(|n| matches!(n, Notice::Invite { title, .. } if title == "Интервью")));
+        assert!(notices.iter().any(|n| matches!(n, Notice::Moved { title, .. } if title == "Demo")));
+        assert!(notices.iter().any(|n| matches!(n, Notice::Invite { title, .. } if title == "Interview")));
 
         let from = future.timestamp_millis() - 3600_000;
         let list = core.instances(from, from + 4 * 86_400_000).unwrap();
-        let standups = list.iter().filter(|i| i.title == "Стендап").count();
+        let standups = list.iter().filter(|i| i.title == "Stand-up").count();
         assert_eq!(standups, 3, "4 days of a daily series minus one cancelled occurrence");
 
         // A cancelled single event disappears entirely.

@@ -1,46 +1,46 @@
-# Kwalendar — стиль интерфейса
+# Kwalendar — UI style
 
-Макеты: https://claude.ai/artifact/RNFunnE9x8uzjL9BBQxpZ8. Логотип: `design/logo/`.
+Mockups: https://claude.ai/artifact/RNFunnE9x8uzjL9BBQxpZ8. Logo: `design/logo/`.
 
-Стиль взят из GitKwaken (стиль «Kwak», `GitKwaken/assets/styles/kwak.toml`) и перенесён на календарь.
+The style comes from GitKwaken (the "Kwak" style, `GitKwaken/assets/styles/kwak.toml`), carried over to a calendar.
 
-## Правила
+## Rules
 
-1. **Navy только в хроме окна.** Заголовок окна с логотипом, поиском и кнопками окна — `#0F2240` в тёмной теме, мятный `#DDF0EE` в светлой. Остальной интерфейс нейтрально-серый: без синего оттенка и без бренд-заливок.
-2. **Teal сплошной заливкой — только у выбранного и активного.** Это активный вид в переключателе, выбранный раздел настроек, ответ «Да», главная кнопка в диалоге. Выделенные строки — teal с прозрачностью 22–24 %.
-3. **Оранжевый — это «сегодня» и «сейчас»**, как оранжевая ячейка в логотипе. Им выделены число сегодняшнего дня (в мини-календаре, в шапке недели, в сетке месяца), линия текущего времени, «через N мин» и предупреждения (офлайн, «Нужно войти снова»). Больше оранжевый нигде не используется.
-4. **Иконки линейные, teal, обводка 2px, скруглённые концы.** На части иконок есть оранжевая точка-«узел», как узлы коммитов в GitKwaken: синхронизация, настройки, «Создать».
-5. **Плотная компоновка.** Шрифт Segoe UI 13 px, строки списков 24–30 px, радиусы 3–4 px (у диалогов 6 px). Заголовки секций сайдбара — капслок со стрелкой раскрытия, как в GitKwaken.
-6. **События — полупрозрачная заливка цветом календаря и светлый текст** (в светлой теме — тёмный). Выбранное событие закрашено сплошным цветом с navy-текстом и обводкой. Прошедшие события — с прозрачностью 50 %.
-7. **Fredoka используется только в вордмарке** «Kwalendar» в заголовке окна. Буква «K» — aqua.
+1. **Navy only in the window chrome.** The title bar with the logo, search and window buttons is `#0F2240` in the dark theme and mint `#DDF0EE` in the light one. The rest of the interface is neutral grey: no blue tint and no brand fills.
+2. **Solid teal only for what is selected and active.** That is the active view in the switcher, the selected settings section, the "Yes" answer, the main button of a dialog. Highlighted rows are teal at 22–24 % opacity.
+3. **Orange means "today" and "now"**, like the orange cell in the logo. It marks today's date (in the mini month, the week header and the month grid), the current-time line, "in N min" and warnings (offline, "Sign in again"). Orange is used nowhere else.
+4. **Icons are outlined, teal, 2px stroke, round caps.** Some icons carry an orange "node" dot, like the commit nodes in GitKwaken: sync, settings, "Create".
+5. **Dense layout.** Segoe UI 13 px, list rows 24–30 px, radii 3–4 px (6 px for dialogs). Sidebar section headers are all caps with a disclosure arrow, as in GitKwaken.
+6. **Events are a translucent fill in the calendar's colour with light text** (dark text in the light theme). The selected event is filled solid, with navy text and an outline. Past events are at 50 % opacity.
+7. **Fredoka is used only for the "Kwalendar" wordmark** in the title bar. The "K" is aqua.
 
-## Токены
+## Tokens
 
-| | тёмная | светлая |
+| | dark | light |
 |---|---|---|
 | chrome | `#0F2240` | `#DDF0EE` |
 | chrome-text | `#E8EDF6` | `#0F2240` |
-| panel (сайдбар, панель события) | `#25272B` | `#F5F5F5` |
-| window (сетка) | `#2B2D31` | `#FFFFFF` |
-| extreme (поля ввода) | `#1E1F22` | `#FFFFFF` |
+| panel (sidebar, event panel) | `#25272B` | `#F5F5F5` |
+| window (grid) | `#2B2D31` | `#FFFFFF` |
+| extreme (input fields) | `#1E1F22` | `#FFFFFF` |
 | line | `#3A3C42` | `#E0E0E0` |
 | text / muted | `#DCDDDF` / `#979797` | `#1F1F1F` / `#6B6B6B` |
-| accent (выбранное) | `#1F988D` | `#158C82` |
+| accent (selected) | `#1F988D` | `#158C82` |
 | icon | `#3CBAAF` | `#158C82` |
-| node (сегодня, сейчас) | `#FD9921` | `#E07C00` |
+| node (today, now) | `#FD9921` | `#E07C00` |
 | selection | `rgba(60,186,175,.22)` | `rgba(21,140,130,.16)` |
 | button / border | `#33353A` / `#43454B` | `#FFFFFF` / `#BEBEBE` |
 
-Цвета календарей по умолчанию (дорожки графа Kwak): `#3D8BD8` `#2EC4D6` `#E8C13D` `#C37BE8` `#3DC28B` `#E85D8A` `#E8665A`.
+Default calendar colours (the Kwak graph lanes): `#3D8BD8` `#2EC4D6` `#E8C13D` `#C37BE8` `#3DC28B` `#E85D8A` `#E8665A`.
 
-## Бренд
+## Brand
 
-Navy `#0F2240`, Aqua `#2EC4B6`, Orange `#FF9F1C`, Mint `#E6F5F4`. Ячейки календаря в логотипе — `#D3EFEC`, на чистом mint они не видны на белом. Слоган — PLAN BRIGHTER DAYS.
+Navy `#0F2240`, Aqua `#2EC4B6`, Orange `#FF9F1C`, Mint `#E6F5F4`. The calendar cells in the logo are `#D3EFEC`: in pure mint they would not show on white. Tagline: PLAN BRIGHTER DAYS.
 
-| Файл | Что это |
+| File | What it is |
 |---|---|
-| `logo/kwalendar-mark.svg` | знак без текста (для ассетов, без `<style>`) |
-| `logo/kwalendar-icon.svg` | иконка приложения на navy-квадрате; из неё можно собрать `src-tauri/icons` через `npx tauri icon` |
-| `logo/kwalendar-mono.svg` | монохром navy |
-| `logo/kwalendar-logo.svg` | знак, вордмарк и слоган (шрифт Fredoka подгружается с Google Fonts) |
-| `logo/kwalendar-lockup.svg`, `logo/kwalendar-lockup-dark.svg` | горизонтальный лок-ап для светлого фона и для navy |
+| `logo/kwalendar-mark.svg` | the mark without text (for assets, no `<style>`) |
+| `logo/kwalendar-icon.svg` | the app icon on a navy square; `src-tauri/icons` can be generated from it with `npx tauri icon` |
+| `logo/kwalendar-mono.svg` | navy monochrome |
+| `logo/kwalendar-logo.svg` | mark, wordmark and tagline (the Fredoka font is loaded from Google Fonts) |
+| `logo/kwalendar-lockup.svg`, `logo/kwalendar-lockup-dark.svg` | horizontal lockup for light backgrounds and for navy |

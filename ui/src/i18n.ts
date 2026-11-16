@@ -23,7 +23,7 @@ export function applyLang(pref: string | undefined, system: string | undefined) 
 /** Locale for Intl formatters. en-GB: 24-hour clock and day-month order, like the Monday-based grid. */
 export const locale = () => (lang() === 'en' ? 'en-GB' : 'ru-RU');
 
-/** Russian plural: 1 день, 2 дня, 5 дней. */
+/** Russian plural forms: one (1, 21, …), few (2–4, 22–24, …), many (0, 5–20, …). */
 export function pluralRu(n: number, one: string, few: string, many: string): string {
   const m10 = n % 10;
   const m100 = n % 100;

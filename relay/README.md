@@ -1,10 +1,10 @@
 # Kwalendar push relay
 
-Необязательный компонент. Без него Kwalendar опрашивает Google (30 с при активном окне, 3 мин в трее). С ним Google сам сообщает об изменениях через `events.watch`: изменения приходят за секунды, а опрос становится редким (2 мин / 15 мин), только как страховка.
+Optional. Without it Kwalendar polls Google (every 30 s with the window active, every 3 min in the tray). With it, Google reports changes itself through `events.watch`: changes arrive within seconds, and polling becomes rare (2 min / 15 min), only as a safety net.
 
-Relay хранит только счётчик для каждого ключа канала. Данные событий через него не проходят: Google присылает лишь сигнал «в календаре что-то изменилось», а сами изменения приложение забирает напрямую из Google.
+The relay stores only a counter per channel key. No event data passes through it: Google sends just a "something changed in the calendar" signal, and the app fetches the changes directly from Google.
 
-## Развёртывание (Cloudflare Workers, бесплатный тариф)
+## Deploying (Cloudflare Workers, free plan)
 
 ```bash
 cd relay
@@ -12,9 +12,9 @@ npx wrangler login
 npx wrangler deploy
 ```
 
-Wrangler выведет адрес вида `https://kwalendar-relay.<имя>.workers.dev`. Вставьте его в Kwalendar: Настройки → Синхронизация → Push-relay. Приложение сгенерирует секретный ключ канала и подпишет каждый календарь на уведомления. Подписки продлеваются сами, Google держит их до 7 дней.
+Wrangler prints an address like `https://kwalendar-relay.<name>.workers.dev`. Paste it into Kwalendar: Settings → Sync → Push relay. The app generates a secret channel key and subscribes every calendar to notifications. Subscriptions renew themselves; Google keeps them for up to 7 days.
 
-## Протокол
+## Protocol
 
-- `POST /google/<key>` — сюда шлёт Google. Запрос принимается только с заголовком `X-Goog-Channel-Token: <key>`.
-- `GET /wait/<key>?since=N` — long-poll приложения. Отвечает `{"seq": M}`, как только `M ≠ N`, иначе примерно через 50 с.
+- `POST /google/<key>` — Google posts here. A request is accepted only with the `X-Goog-Channel-Token: <key>` header.
+- `GET /wait/<key>?since=N` — the app's long poll. Answers `{"seq": M}` as soon as `M ≠ N`, otherwise after about 50 s.

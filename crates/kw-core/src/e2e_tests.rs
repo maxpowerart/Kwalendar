@@ -26,16 +26,16 @@ async fn full_sync_cycle_against_fake_google() {
 
     let mut st = State::default();
     st.calendars = vec![
-        json!({"id": "main", "summary": "Основной", "backgroundColor": "#5B8DEF", "accessRole": "owner", "primary": true,
+        json!({"id": "main", "summary": "Main", "backgroundColor": "#5B8DEF", "accessRole": "owner", "primary": true,
                "timeZone": "Europe/Moscow", "defaultReminders": [{"method": "popup", "minutes": 10}], "selected": true}),
-        json!({"id": "team", "summary": "Команда", "backgroundColor": "#39B8C9", "accessRole": "writer",
+        json!({"id": "team", "summary": "Team", "backgroundColor": "#39B8C9", "accessRole": "writer",
                "timeZone": "Europe/Moscow", "selected": true}),
     ];
-    let mut standup = ev("standup", "Стендап", t0, 30, "me@x.com");
+    let mut standup = ev("standup", "Stand-up", t0, 30, "me@x.com");
     standup["recurrence"] = json!(["RRULE:FREQ=DAILY;COUNT=10"]);
     st.put("main", standup);
-    st.put("main", ev("demo", "Демо", t0 + Duration::hours(3), 60, "ilya@x.com"));
-    st.put("team", ev("retro", "Ретро", t0 + Duration::hours(5), 60, "me@x.com"));
+    st.put("main", ev("demo", "Demo", t0 + Duration::hours(3), 60, "ilya@x.com"));
+    st.put("team", ev("retro", "Retro", t0 + Duration::hours(5), 60, "me@x.com"));
     let fake = fake_google::start(st).await;
 
     let notices: Arc<Mutex<Vec<Notice>>> = Arc::default();
@@ -64,28 +64,28 @@ async fn full_sync_cycle_against_fake_google() {
     assert_eq!(core.db.calendars().unwrap().len(), 2);
     assert!(core.db.calendar_ids("acc").unwrap().iter().all(|(_, t)| t.is_some()));
     let t = titles(&core);
-    assert_eq!(t.iter().filter(|x| *x == "Стендап").count(), 3);
-    assert!(t.contains(&"Демо".to_string()) && t.contains(&"Ретро".to_string()));
+    assert_eq!(t.iter().filter(|x| *x == "Stand-up").count(), 3);
+    assert!(t.contains(&"Demo".to_string()) && t.contains(&"Retro".to_string()));
     assert!(notices.lock().unwrap().is_empty(), "no notices on first load");
 
     // 2. Steady state goes through one batch call; a remote move shows up with a notice.
     let batches = fake.state.lock().unwrap().count("POST batch");
     {
         let mut s = fake.state.lock().unwrap();
-        s.put("main", ev("demo", "Демо", t0 + Duration::hours(4), 60, "ilya@x.com"));
+        s.put("main", ev("demo", "Demo", t0 + Duration::hours(4), 60, "ilya@x.com"));
     }
     core.sync_all().await;
     assert_eq!(fake.state.lock().unwrap().count("POST batch"), batches + 1);
     let demo = core.db.event("acc", "main", "demo").unwrap().unwrap();
     assert_eq!(demo.start_ts, Some((t0 + Duration::hours(4)).timestamp()));
-    assert!(notices.lock().unwrap().iter().any(|n| matches!(n, Notice::Moved { title, .. } if title == "Демо")));
+    assert!(notices.lock().unwrap().iter().any(|n| matches!(n, Notice::Moved { title, .. } if title == "Demo")));
 
     // 3. Local create with Meet reaches the server; the row stops being pending and gets the link.
     let key = core
         .create_event(EventInput {
             account_id: "acc".into(),
             calendar_id: "main".into(),
-            title: "Созвон с Петей".into(),
+            title: "Call with Peter".into(),
             all_day: false,
             start: Some((t0 + Duration::hours(6)).timestamp_millis()),
             end: Some((t0 + Duration::hours(6) + Duration::minutes(30)).timestamp_millis()),
@@ -110,7 +110,7 @@ async fn full_sync_cycle_against_fake_google() {
     // 4. Conflict: server changed the event after our last sync; our patch carries the old etag → 412.
     {
         let mut s = fake.state.lock().unwrap();
-        s.put("main", ev("demo", "Демо (перенесено Ильёй)", t0 + Duration::hours(4), 60, "ilya@x.com"));
+        s.put("main", ev("demo", "Demo (moved by Ilya)", t0 + Duration::hours(4), 60, "ilya@x.com"));
     }
     let target = |id: &str| EditTarget {
         account_id: "acc".into(),
@@ -124,11 +124,11 @@ async fn full_sync_cycle_against_fake_google() {
         .unwrap();
     core.sync_all().await;
     let demo = core.db.event("acc", "main", "demo").unwrap().unwrap();
-    assert_eq!(demo.summary.as_deref(), Some("Демо (перенесено Ильёй)"), "server wins");
+    assert_eq!(demo.summary.as_deref(), Some("Demo (moved by Ilya)"), "server wins");
     assert!(notices.lock().unwrap().iter().any(|n| matches!(n, Notice::Conflict { .. })));
 
     // 5. Deleting one occurrence of the series hides it locally and clears the outbox.
-    let occ = core.instances(from, to).unwrap().into_iter().filter(|i| i.title == "Стендап").nth(1).unwrap();
+    let occ = core.instances(from, to).unwrap().into_iter().filter(|i| i.title == "Stand-up").nth(1).unwrap();
     core.delete_event(
         EditTarget {
             account_id: occ.account_id.clone(),
@@ -142,14 +142,14 @@ async fn full_sync_cycle_against_fake_google() {
     )
     .unwrap();
     core.sync_all().await;
-    assert_eq!(titles(&core).iter().filter(|x| *x == "Стендап").count(), 2);
+    assert_eq!(titles(&core).iter().filter(|x| *x == "Stand-up").count(), 2);
     assert_eq!(core.db.outbox_count().unwrap(), 0);
 
     // 6. Expired sync token (410) → transparent full resync.
     fake.state.lock().unwrap().expire_next = true;
     core.sync_all().await;
     assert_eq!(core.db.accounts().unwrap()[0].status, "ok");
-    assert!(titles(&core).contains(&"Ретро".to_string()));
+    assert!(titles(&core).contains(&"Retro".to_string()));
 
     // 7. Deleting a single event cancels it on the server.
     core.delete_event(
@@ -157,7 +157,7 @@ async fn full_sync_cycle_against_fake_google() {
         DeleteScope::This,
     )
     .unwrap();
-    assert!(!titles(&core).contains(&"Ретро".to_string()), "gone locally right away");
+    assert!(!titles(&core).contains(&"Retro".to_string()), "gone locally right away");
     core.sync_all().await;
     assert_eq!(fake.state.lock().unwrap().get("team", "retro").unwrap()["status"], "cancelled");
     assert!(core.db.event("acc", "team", "retro").unwrap().is_none());
@@ -187,7 +187,7 @@ async fn oauth_login_and_refresh_against_fake_endpoints() {
                 assert!(req.contains("refresh_token=rt1"));
                 r#"{"access_token":"at2","expires_in":3600}"#
             } else if req.starts_with("GET /userinfo") {
-                r#"{"sub":"kw-test-user-7f3a","email":"tester@example.com","name":"Тест"}"#
+                r#"{"sub":"kw-test-user-7f3a","email":"tester@example.com","name":"Tester"}"#
             } else {
                 "{}"
             };
@@ -250,8 +250,8 @@ async fn push_watches_and_relay_wakeup() {
 
     let mut st = State::default();
     st.calendars = vec![
-        json!({"id": "main", "summary": "Основной", "backgroundColor": "#5B8DEF", "accessRole": "owner", "primary": true, "selected": true}),
-        json!({"id": "holidays", "summary": "Праздники", "backgroundColor": "#999999", "accessRole": "reader", "selected": true}),
+        json!({"id": "main", "summary": "Main", "backgroundColor": "#5B8DEF", "accessRole": "owner", "primary": true, "selected": true}),
+        json!({"id": "holidays", "summary": "Holidays", "backgroundColor": "#999999", "accessRole": "reader", "selected": true}),
     ];
     let fake = fake_google::start(st).await;
 

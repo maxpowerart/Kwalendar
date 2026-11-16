@@ -30,7 +30,3 @@ Kwalendar does not sell, share, or transfer Google user data to anyone, does not
 ## Contact
 
 Questions: open an issue at <https://github.com/maxpowerart/Kwalendar/issues> or write to thepowerart@gmail.com.
-
----
-
-**Кратко по-русски.** Kwalendar работает только на вашем компьютере. События хранятся в локальной базе, токены входа лежат в Диспетчере учётных данных Windows. Приложение обращается напрямую к Google, своего сервера у него нет, разработчик ваших данных не получает. Данные Google никому не передаются и не используются для рекламы или обучения моделей. Чтобы удалить данные, отключите аккаунт в настройках или отзовите доступ на myaccount.google.com/permissions.

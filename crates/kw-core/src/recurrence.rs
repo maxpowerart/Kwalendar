@@ -250,7 +250,7 @@ mod tests {
             calendar_id: "c".into(),
             id: "m".into(),
             status: "confirmed".into(),
-            summary: Some("Стендап".into()),
+            summary: Some("Stand-up".into()),
             // 2026-10-19 09:30 MSK = 06:30Z, Monday
             start_ts: Some(1792391400),
             end_ts: Some(1792393200),

@@ -501,7 +501,7 @@ mod tests {
     #[test]
     fn parses_timed_event_with_meet() {
         let v = json!({
-            "id": "abc", "etag": "\"1\"", "status": "confirmed", "summary": "Ревью",
+            "id": "abc", "etag": "\"1\"", "status": "confirmed", "summary": "Review",
             "start": {"dateTime": "2026-10-22T15:00:00+03:00", "timeZone": "Europe/Moscow"},
             "end": {"dateTime": "2026-10-22T16:30:00+03:00"},
             "conferenceData": {"entryPoints": [{"entryPointType": "video", "uri": "https://meet.google.com/x"}]},
@@ -530,7 +530,7 @@ mod tests {
     #[test]
     fn finds_zoom_link_in_description() {
         assert_eq!(
-            find_link("Подключайтесь: https://us02web.zoom.us/j/123?pwd=x."),
+            find_link("Join: https://us02web.zoom.us/j/123?pwd=x."),
             Some("https://us02web.zoom.us/j/123?pwd=x".into())
         );
     }

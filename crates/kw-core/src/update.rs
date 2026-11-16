@@ -241,7 +241,7 @@ mod tests {
 
     const LIST: &str = r#"[
       {"tag_name":"v0.3.0","name":"Kwalendar 0.3.0 (withdrawn)","draft":false,"prerelease":true,"published_at":"2026-11-10T10:00:00Z",
-       "body":"**Withdrawn:** ломает синхронизацию\n\nnotes","assets":[{"name":"update.json","browser_download_url":"https://x/0.3.0/update.json"}]},
+       "body":"**Withdrawn:** breaks sync\n\nnotes","assets":[{"name":"update.json","browser_download_url":"https://x/0.3.0/update.json"}]},
       {"tag_name":"v0.2.1","name":"Kwalendar 0.2.1","draft":false,"prerelease":false,"published_at":"2026-11-01T10:00:00Z",
        "body":"fixes","assets":[{"name":"update.json","browser_download_url":"https://x/0.2.1/update.json"}]},
       {"tag_name":"v0.4.0","name":"draft","draft":true,"assets":[{"name":"update.json","browser_download_url":"https://x/d"}]},
@@ -255,7 +255,7 @@ mod tests {
         let l = parse_release_list(LIST).unwrap();
         assert_eq!(l.iter().map(|x| x.version.as_str()).collect::<Vec<_>>(), ["0.3.0", "0.2.1", "0.1.0"]);
         assert!(l[0].withdrawn && l[0].prerelease);
-        assert_eq!(l[0].reason, "ломает синхронизацию");
+        assert_eq!(l[0].reason, "breaks sync");
         assert!(!l[1].withdrawn);
     }
 
@@ -279,7 +279,7 @@ mod tests {
         let sha = format!("{:x}", Sha256::digest(&payload));
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let base = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
-        let manifest = format!(r#"{{"version":"v0.3.0","notes":"Новое","url":"setup.exe","sha256":"{sha}"}}"#);
+        let manifest = format!(r#"{{"version":"v0.3.0","notes":"New","url":"setup.exe","sha256":"{sha}"}}"#);
         let list = LIST.to_string();
         let p2 = payload.clone();
         tokio::spawn(async move {
@@ -314,7 +314,7 @@ mod tests {
 
         let bad = check(&http, &ch, "0.3.0", "", false).await;
         let w = bad.withdrawn.expect("running a withdrawn release");
-        assert_eq!(w.reason, "ломает синхронизацию");
+        assert_eq!(w.reason, "breaks sync");
         assert_eq!(w.target.unwrap().version, "0.2.1");
 
         let dir = std::env::temp_dir().join(format!("kw-upd-{}", uuid::Uuid::new_v4().simple()));

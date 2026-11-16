@@ -1,119 +1,119 @@
-# Kwalendar — стек и архитектура
+# Kwalendar — stack and architecture
 
-Десктопный клиент Google Calendar. Приоритеты: скорость, приятный UI, экономная и надёжная синхронизация, уведомления, несколько аккаунтов Google. Сначала Windows, потом macOS и Linux (мобильные — позже).
+A desktop client for Google Calendar. Priorities: speed, a pleasant UI, frugal and reliable sync, notifications, several Google accounts. Windows first, then macOS and Linux (mobile later).
 
-## Целевые метрики
+## Target metrics
 
-| Метрика | Цель |
+| Metric | Target |
 |---|---|
-| Холодный старт до первого кадра с данными | < 400 мс (данные из локальной БД, без сети) |
-| Переключение недели/месяца | < 16 мс (1 кадр) |
-| RAM в трее | < 80 МБ |
-| Установщик | < 15 МБ |
-| Задержка появления чужого изменения | ≤ 30 с при открытом окне |
+| Cold start to the first frame with data | < 400 ms (data from the local DB, no network) |
+| Switching week/month | < 16 ms (1 frame) |
+| RAM in the tray | < 80 MB |
+| Installer | < 15 MB |
+| Delay before someone else's change shows up | ≤ 30 s with the window open |
 
-## Стек
+## Stack
 
-| Слой | Выбор | Почему |
+| Layer | Choice | Why |
 |---|---|---|
-| Оболочка | **Tauri 2** (Rust + WebView2) | Бинарь ~10 МБ, мало RAM, нативные трей/уведомления/автозапуск/горячие клавиши; macOS и Linux из коробки, мобильные таргеты есть |
-| Ядро | **Rust**, отдельный crate `kw-core` без зависимостей от Tauri | Синхронизация, БД, повторения, напоминания. Переиспользуется на любой платформе (в т.ч. через UniFFI для нативного мобильного UI) |
-| UI | **SolidJS + TypeScript + Vite** | Точечная реактивность без VDOM: сетка из сотен блоков перерисовывается только там, где поменялось. ~7 КБ рантайма |
-| Стили | CSS-переменные (токены) + CSS-модули | Темы (тёмная/светлая/акцент) без рантайма |
-| IPC | Tauri commands + events, типы через **tauri-specta** | TS-биндинги генерируются из Rust — не расходятся |
-| Хранилище | **SQLite** (`rusqlite`, bundled) в WAL, **FTS5** для поиска | Local-first: UI всегда читает локальную БД, сеть — только фоновая |
-| Сеть | `reqwest` (rustls, HTTP/2, gzip) + `tokio` | Keep-alive, сжатие, параллельные запросы |
-| Даты | `chrono` + `chrono-tz`, повторения — `rrule` | Повторы разворачиваем локально, не тянем тысячи экземпляров с сервера |
-| OAuth | `oauth2` crate, PKCE, loopback-redirect `127.0.0.1:<случайный порт>` | Рекомендуемый Google поток для десктопа |
-| Секреты | `keyring` → Диспетчер учётных данных Windows | Refresh-токены не лежат в файлах |
-| Уведомления | WinRT Toast через crate `windows` (кнопки «Присоединиться», «Отложить») | Плагин `tauri-plugin-notification` не умеет действия в тосте |
-| Системное | `tauri-plugin-autostart`, `-single-instance`, `-global-shortcut`, `-updater`, трей Tauri | Запуск с Windows в трей, `Ctrl+Alt+K` — быстрый ввод из любого окна |
-| Быстрый ввод | `chrono-node` (есть русская локаль) + свой слой для `#календарь`, участников, напоминаний | Готовый парсер дат RU/EN |
-| Сборка | Tauri bundler → MSI/NSIS, подпись, автообновление | Установщик регистрирует AppUserModelID — без него тосты Windows не работают |
+| Shell | **Tauri 2** (Rust + WebView2) | ~10 MB binary, little RAM, native tray/notifications/autostart/hotkeys; macOS and Linux out of the box, mobile targets exist |
+| Core | **Rust**, a separate `kw-core` crate with no Tauri dependency | Sync, DB, recurrence, reminders. Reusable on any platform (including through UniFFI for a native mobile UI) |
+| UI | **SolidJS + TypeScript + Vite** | Fine-grained reactivity without a VDOM: a grid of hundreds of blocks re-renders only where something changed. ~7 KB runtime |
+| Styles | CSS variables (tokens) + CSS modules | Themes (dark/light/accent) with no runtime |
+| IPC | Tauri commands + events, types via **tauri-specta** | TS bindings are generated from Rust, so they never drift |
+| Storage | **SQLite** (`rusqlite`, bundled) in WAL mode, **FTS5** for search | Local-first: the UI always reads the local DB, the network is background-only |
+| Network | `reqwest` (rustls, HTTP/2, gzip) + `tokio` | Keep-alive, compression, parallel requests |
+| Dates | `chrono` + `chrono-tz`, recurrence via `rrule` | Recurring events are expanded locally instead of pulling thousands of instances from the server |
+| OAuth | `oauth2` crate, PKCE, loopback redirect `127.0.0.1:<random port>` | The flow Google recommends for desktop apps |
+| Secrets | `keyring` → Windows Credential Manager | Refresh tokens are never stored in files |
+| Notifications | WinRT toasts via the `windows` crate ("Join", "Snooze" buttons) | `tauri-plugin-notification` cannot do toast actions |
+| System | `tauri-plugin-autostart`, `-single-instance`, `-global-shortcut`, `-updater`, Tauri tray | Start with Windows into the tray, `Ctrl+Alt+K` for quick add from any window |
+| Quick add | `chrono-node` (has a Russian locale) + our own layer for `#calendar`, guests, reminders | A ready-made EN/RU date parser |
+| Build | Tauri bundler → MSI/NSIS, signing, auto-update | The installer registers the AppUserModelID; Windows toasts do not work without it |
 
-### Почему не другое
+### Why not something else
 
-- **Electron** — 150+ МБ установщик и 250+ МБ RAM. Противоречит главной фишке.
-- **WinUI 3 / WPF** — только Windows, кроссплатформу придётся переписывать.
-- **Flutter** — красиво, но слабее интеграция с Windows (тосты с действиями, трей, AUMID) и хуже рендер текста на десктопе.
-- **Avalonia** — достойная альтернатива, если команда на C#. Но красивый кастомный UI на вебе делается быстрее, а Rust-ядро легче переиспользовать.
-- **Чистый Rust UI (egui/iced/Slint)** — быстро, но «приятный интерфейс» потребует в разы больше работы.
+- **Electron** — a 150+ MB installer and 250+ MB of RAM. Contradicts the main selling point.
+- **WinUI 3 / WPF** — Windows only; going cross-platform would mean a rewrite.
+- **Flutter** — good-looking, but weaker Windows integration (toasts with actions, tray, AUMID) and worse text rendering on desktop.
+- **Avalonia** — a solid alternative for a C# team. But a polished custom UI is faster to build on the web, and a Rust core is easier to reuse.
+- **Pure Rust UI (egui/iced/Slint)** — fast, but a "pleasant interface" would take several times more work.
 
-## Синхронизация
+## Sync
 
-Принцип: **local-first**. UI никогда не ждёт сеть. Все изменения сначала пишутся в SQLite, затем фоновый воркер синхронизирует.
+Principle: **local-first**. The UI never waits for the network. Every change is written to SQLite first, then a background worker syncs.
 
-**Чтение (Google → локально)**
+**Reading (Google → local)**
 
-1. На аккаунт: `CalendarList.list` с `syncToken`. На календарь: `Events.list` с `syncToken`, `showDeleted=true`, `singleEvents=false` (храним мастера повторов и исключения, разворачиваем сами).
-2. Первый вход в два этапа: сначала быстрый запрос с `timeMin/timeMax` на ±4 недели, чтобы экран заполнился за секунды, затем фоновая полная выгрузка постранично (`maxResults=2500`), которая даёт `nextSyncToken`.
-3. Инкрементальная проверка — только дельты, обычно пустой ответ на несколько сотен байт:
-   - 30 с, когда окно активно; 2–5 мин в трее;
-   - сразу — при выходе из сна, восстановлении сети, фокусе окна, после своей записи.
-4. Много календарей → один **batch**-запрос (до 50 подзапросов), `fields=` для частичного ответа, gzip.
-5. `410 Gone` → полная пересинхронизация только этого календаря. `403 rateLimitExceeded`/`429` → экспоненциальная задержка с джиттером.
-6. Фаза 2 (по желанию): push через `events.watch`. Ему нужен публичный HTTPS-вебхук, поэтому нужен маленький relay (например, Cloudflare Worker), который будит клиент по WebSocket. Тогда изменения приходят мгновенно, а опрос уходит в редкий режим (раз в 10–15 мин).
+1. Per account: `CalendarList.list` with a `syncToken`. Per calendar: `Events.list` with a `syncToken`, `showDeleted=true`, `singleEvents=false` (we store recurrence masters and exceptions and expand them ourselves).
+2. First sign-in in two stages: first a quick request with `timeMin/timeMax` for ±4 weeks so the screen fills in seconds, then a full paged download in the background (`maxResults=2500`) that yields the `nextSyncToken`.
+3. Incremental checks fetch only deltas, usually an empty answer of a few hundred bytes:
+   - every 30 s while the window is active; 2–5 min in the tray;
+   - right away after wake-up from sleep, network recovery, window focus, and our own writes.
+4. Many calendars → one **batch** request (up to 50 sub-requests), `fields=` for partial responses, gzip.
+5. `410 Gone` → full resync of that calendar only. `403 rateLimitExceeded`/`429` → exponential backoff with jitter.
+6. Phase 2 (optional): push through `events.watch`. It needs a public HTTPS webhook, hence a small relay (e.g. a Cloudflare Worker) that wakes the client up. Changes then arrive instantly, and polling drops to a rare mode (every 10–15 min).
 
-**Запись (локально → Google)**
+**Writing (local → Google)**
 
-- Оптимистичное применение в БД + таблица `outbox`. Воркер отправляет с `If-Match: <etag>`.
-- `412 Precondition Failed` → перечитать событие; простые поля мерджим, при настоящем конфликте выигрывает сервер, пользователь видит уведомление «изменено другим участником».
-- Офлайн: очередь копится и уходит при появлении сети. В UI — индикатор «N изменений в очереди».
+- Optimistic apply to the DB + an `outbox` table. The worker sends with `If-Match: <etag>`.
+- `412 Precondition Failed` → re-read the event; simple fields are merged, on a real conflict the server wins and the user gets a "changed by another participant" notice.
+- Offline: the queue builds up and is sent when the network is back. The UI shows "N changes queued".
 
-**Схема БД (ядро)**: `accounts`, `calendars` (sync_token, color, selected), `events` (raw JSON + индексируемые поля, etag, recurrence), `instances` (развёрнутые экземпляры на окно ±1–2 года, пересчитываются при изменении мастера), `reminders` (fire_at, индекс), `outbox`, `events_fts`.
+**DB schema (core)**: `accounts`, `calendars` (sync_token, color, selected), `events` (raw JSON + indexed fields, etag, recurrence), `instances` (expanded occurrences for a ±1–2 year window, recomputed when the master changes), `reminders` (fire_at, indexed), `outbox`, `events_fts`.
 
-## Уведомления
+## Notifications
 
-- Планировщик в ядре: один таймер `tokio` до ближайшего `reminders.fire_at`. Пересчёт после синхронизации, смены часового пояса и выхода из сна (`WM_POWERBROADCAST`).
-- Если напоминание проспали во время сна ПК: опоздание < 15 мин — показываем, иначе отмечаем как пропущенное в трее.
-- Тост: «Присоединиться» (ссылка Meet/Zoom из события), «Отложить на 5/10/15 мин», «Скрыть».
-- Уведомления об изменениях от других (перенос, отмена, новое приглашение) — по дельтам синхронизации, отключаемые.
-- Режим «Тишина на 1 ч» из трея.
+- Scheduler in the core: a single `tokio` timer until the nearest `reminders.fire_at`. Recomputed after sync, a time-zone change and wake-up from sleep (`WM_POWERBROADCAST`).
+- If a reminder was missed while the PC slept: less than 15 min late — show it, otherwise mark it as missed in the tray.
+- Toast: "Join" (the Meet/Zoom link from the event), "Snooze 5/10/15 min", "Dismiss".
+- Notices about changes by others (moved, cancelled, new invitation) come from sync deltas and can be turned off.
+- "Do not disturb for 1 h" from the tray.
 
-## Несколько аккаунтов Google
+## Several Google accounts
 
-- У каждого аккаунта свой refresh-токен в keyring (`kwalendar/<google sub>`) и свой воркер синхронизации. Ошибка одного аккаунта не трогает остальные (в UI: «Войти снова», показываем кэш).
+- Each account has its own refresh token in the keyring (`kwalendar/<google sub>`) and its own sync worker. An error in one account does not affect the others (the UI shows "Sign in again" and keeps the cache).
 - Scopes: `openid email profile https://www.googleapis.com/auth/calendar`.
-- **Важно про Google OAuth:** scope `calendar` считается *sensitive*.
-  - Пока приложение в статусе **Testing**, refresh-токены живут **7 дней** — придётся перелогиниваться раз в неделю. Для личного использования переведите приложение в **In production** без верификации: появится экран-предупреждение «приложение не проверено» и лимит в 100 пользователей, зато токены не протухают.
-  - Для публичного релиза нужна верификация приложения Google (для sensitive-scope хватает её, аудит CASA нужен только для restricted).
-  - `client_secret` десктопного OAuth-клиента по документации Google секретом не считается; защита — PKCE + loopback.
+- **Important about Google OAuth:** the `calendar` scope is *sensitive*.
+  - While the app is in **Testing** status, refresh tokens live for **7 days**: you would have to sign in again every week. For personal use, move the app to **In production** without verification: there will be an "unverified app" warning screen and a 100-user limit, but tokens will not expire.
+  - A public release needs Google's app verification (enough for a sensitive scope; a CASA audit is only needed for restricted ones).
+  - The `client_secret` of a desktop OAuth client is not a secret according to Google's documentation; protection comes from PKCE + loopback.
 
-## Как добиться скорости
+## How to be fast
 
-- Окно показывается только после первого кадра с данными из БД. Фон WebView2 совпадает с темой — нет белой вспышки.
-- Ядро держит в памяти развёрнутые экземпляры на ±6 недель от текущей; соседние диапазоны подгружаются заранее.
-- Раскладка пересекающихся событий считается в TS на лету (O(n log n) на день), DOM — только видимые недели; повестка виртуализирована (`@tanstack/solid-virtual`).
-- Тяжёлых UI-библиотек нет. Иконки — inline SVG, шрифт Geist локально в бандле.
-- Всё управляется с клавиатуры: `Ctrl+K` — поиск/быстрый ввод, `1–4` — виды, `T` — сегодня, `J/K` — вперёд/назад, `N` — новое событие.
+- The window is shown only after the first frame with data from the DB. The WebView2 background matches the theme, so there is no white flash.
+- The core keeps expanded occurrences for ±6 weeks around the current one in memory; neighbouring ranges are prefetched.
+- Overlapping events are laid out in TS on the fly (O(n log n) per day), the DOM holds only the visible weeks; the agenda is virtualised (`@tanstack/solid-virtual`).
+- No heavy UI libraries. Icons are inline SVG, the Geist font is bundled locally.
+- Everything works from the keyboard: `Ctrl+K` — search/quick add, `1–4` — views, `T` — today, `J/K` — next/previous, `N` — new event.
 
-## Структура репозитория
+## Repository layout
 
 ```
 kwalendar/
-  crates/kw-core/     # sync, db, google api, recurrence, reminders — без Tauri
-  src-tauri/          # оболочка: команды, трей, тосты, автозапуск, обновления
+  crates/kw-core/     # sync, db, google api, recurrence, reminders — no Tauri
+  src-tauri/          # shell: commands, tray, toasts, autostart, updates
   ui/                 # SolidJS + TS
   docs/
 ```
 
-## Кроссплатформенность
+## Cross-platform
 
-- **macOS** — тот же Tauri; уведомления через UserNotifications, трей → menu bar.
-- **Linux** — Tauri на WebKitGTK (медленнее WebView2, нужно отдельно профилировать).
-- **Мобильные** — Tauri mobile либо нативный UI поверх `kw-core` через UniFFI. Ядро для этого изолировано с первого дня.
+- **macOS** — the same Tauri; notifications through UserNotifications, tray → menu bar.
+- **Linux** — Tauri on WebKitGTK (slower than WebView2, needs separate profiling).
+- **Mobile** — Tauri mobile or a native UI on top of `kw-core` through UniFFI. The core has been isolated for this from day one.
 
-## Этапы
+## Milestones
 
-1. **M1** — один аккаунт, только чтение, недельный вид, локальная БД, инкрементальная синхронизация.
-2. **M2** — несколько аккаунтов, офлайн, выбор календарей, цвета.
-3. **M3** — напоминания, тосты с действиями, трей, автозапуск.
-4. **M4** — создание и редактирование, outbox, конфликты, быстрый ввод `Ctrl+K`.
-5. **M5** — месяц и повестка, поиск FTS, настройки, установщик и автообновление.
-6. **M6** (опц.) — push-relay, macOS-сборка.
+1. **M1** — one account, read-only, week view, local DB, incremental sync.
+2. **M2** — several accounts, offline, calendar selection, colours.
+3. **M3** — reminders, toasts with actions, tray, autostart.
+4. **M4** — create and edit, outbox, conflicts, `Ctrl+K` quick add.
+5. **M5** — month and agenda, FTS search, settings, installer and auto-update.
+6. **M6** (optional) — push relay, macOS build.
 
-## Мокапы
+## Mockups
 
-Canvas: https://claude.ai/artifact/RNFunnE9x8uzjL9BBQxpZ8 — неделя (главный экран), месяц со свёрнутым сайдбаром, быстрый ввод, трей и тосты, настройки аккаунтов и синхронизации.
+Canvas: https://claude.ai/artifact/RNFunnE9x8uzjL9BBQxpZ8 — week (the main screen), month with the sidebar collapsed, quick add, tray and toasts, account and sync settings.
 
-Визуальная система мокапов: тёмная графитовая тема (`#0F1013` фон, `#15161A` панели), акцент `#8EA2FF`, шрифты Geist / Geist Mono, цвета календарей — заливка 20–24 % + светлый текст, прошедшие события приглушены.
+Visual system of the mockups: dark graphite theme (`#0F1013` background, `#15161A` panels), accent `#8EA2FF`, Geist / Geist Mono fonts, calendar colours as a 20–24 % fill + light text, past events dimmed.

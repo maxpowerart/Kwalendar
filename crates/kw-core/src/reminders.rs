@@ -111,7 +111,7 @@ mod tests {
                 calendar_id: "cal".into(),
                 id: "e1".into(),
                 status: "confirmed".into(),
-                summary: Some("Ревью".into()),
+                summary: Some("Review".into()),
                 start_ts: Some(now + 600),
                 end_ts: Some(now + 3600),
                 reminders_default: true,

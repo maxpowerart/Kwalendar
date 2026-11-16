@@ -93,7 +93,7 @@ export function timeRange(start: number, end: number): string {
   return `${time(start)}–${time(end)}`;
 }
 
-/** "через 1 ч 13 мин" / "идёт сейчас" / "" once it has ended */
+/** "in 1 h 13 min" / "happening now" / "" once it has ended */
 export function relative(start: number, end: number, now = Date.now()): string {
   const L = t();
   if (now >= start && now < end) return L.happeningNow;
@@ -123,7 +123,7 @@ export function dateLabel(d: Date | number, now = Date.now()): string {
   return `${weekdayShort(new Date(d))}, ${dayMonth(d)}`;
 }
 
-/** "Чт, 22 октября · 15:00–16:30" */
+/** "Thu, 22 October · 15:00–16:30" */
 export function whenLabel(i: { start: number; end: number; allDay: boolean }): string {
   const s = new Date(i.start);
   if (i.allDay) {
