@@ -1,8 +1,9 @@
 //! Update check, version picker and install-with-restart (GitHub releases, see `kw_core::update`).
 //!
 //! Install: the NSIS installer is downloaded and verified, then a hidden PowerShell waits for
-//! this process to exit, runs the installer silently and starts the new version. Going back to
-//! an older version first runs the installed uninstaller (user data in %APPDATA% stays).
+//! this process to exit, runs the installer silently, waits until the new exe is in place and
+//! starts it. Going back to an older version first runs the installed uninstaller (user data in
+//! %APPDATA% stays).
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -149,10 +150,21 @@ pub async fn update_install(app: AppHandle, release: Release) -> Result<(), Stri
             dir.to_string_lossy().replace('\'', "''")
         ));
     }
+    // The installer process returns before its files are in place (seen: "installer exit: 0"
+    // two seconds in), and starting the exe then brings back the old version. Wait until the exe
+    // on disk reports the new version and no setup process is left (90 s at most), then start it.
     script.push_str(&format!(
-        "$p = Start-Process -FilePath {} -ArgumentList '/S' -PassThru; $p.WaitForExit(); \"installer exit: $($p.ExitCode)\"; Start-Process -FilePath {}; Stop-Transcript | Out-Null",
-        ps_quote(&setup),
-        ps_quote(&exe)
+        "$p = Start-Process -FilePath {setup} -ArgumentList '/S' -PassThru; $p.WaitForExit(); \"installer exit: $($p.ExitCode)\"; \
+         $want = '{want}'; $deadline = (Get-Date).AddSeconds(90); $v = ''; \
+         while ((Get-Date) -lt $deadline) {{ \
+           $v = (Get-Item -LiteralPath {exe} -ErrorAction SilentlyContinue).VersionInfo.ProductVersion; \
+           $busy = Get-Process -Name 'Kwalendar_*' -ErrorAction SilentlyContinue; \
+           if ($v -eq $want -and -not $busy) {{ break }}; Start-Sleep -Milliseconds 500 }}; \
+         \"installed version: $v (wanted $want)\"; Start-Sleep -Milliseconds 500; \
+         Start-Process -FilePath {exe}; Stop-Transcript | Out-Null",
+        setup = ps_quote(&setup),
+        exe = ps_quote(&exe),
+        want = release.version.trim_start_matches('v').replace('\'', "''"),
     ));
     let spawn = |flags: u32| {
         let mut cmd = std::process::Command::new("powershell.exe");

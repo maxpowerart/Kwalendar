@@ -27,6 +27,8 @@ pub const FEED_CAL: &str = "feed";
 const MIN_INTERVAL_SECS: i64 = 120;
 /// Reminder for feeds whose events carry no VALARM at all.
 const DEFAULT_REMINDER_MIN: i64 = 10;
+/// Bumped when parsing changes, so stored feeds are parsed again even if the server sends the same file.
+const PARSER_VERSION: &str = "p2:";
 
 // ---------------------------------------------------------------------------------------------
 // Parsing
@@ -613,7 +615,16 @@ fn feed_http_error(code: u16) -> ApiError {
 async fn fetch(http: &reqwest::Client, url: &str, etag: Option<&str>) -> Result<Fetched, ApiError> {
     // `without_url`: the link is a secret and must not end up in logs or error texts.
     let net = |e: reqwest::Error| ApiError::Network(e.without_url().to_string());
-    let mut req = http.get(url).header(reqwest::header::ACCEPT, "text/calendar, */*;q=0.5");
+    // Texts Google generates into the feed (the Meet block) must come in the app's language,
+    // not one guessed from the IP: ask explicitly, by header and by Google's `hl` parameter.
+    let lang = if crate::i18n::is_en() { "en" } else { "ru" };
+    let mut req = http
+        .get(url)
+        .header(reqwest::header::ACCEPT, "text/calendar, */*;q=0.5")
+        .header(reqwest::header::ACCEPT_LANGUAGE, lang);
+    if host(url).ends_with("google.com") && !url.contains("hl=") {
+        req = req.query(&[("hl", lang)]);
+    }
     if let Some(e) = etag.filter(|e| !e.is_empty()) {
         req = req.header(reqwest::header::IF_NONE_MATCH, e);
     }
@@ -637,7 +648,8 @@ async fn fetch(http: &reqwest::Client, url: &str, etag: Option<&str>) -> Result<
             "The link does not lead to an iCal (.ics) calendar"
         )));
     }
-    let hash = Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect();
+    let digest: String = Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect();
+    let hash = format!("{PARSER_VERSION}{digest}");
     Ok(Fetched::Body { text, etag, hash })
 }
 
@@ -742,7 +754,10 @@ impl Core {
             .into_iter()
             .find(|(id, _)| id == FEED_CAL)
             .and_then(|(_, t)| t);
-        let (etag, old_hash) = validators(token.as_deref());
+        let (mut etag, old_hash) = validators(token.as_deref());
+        if !old_hash.is_some_and(|h| h.starts_with(PARSER_VERSION)) {
+            etag = None; // parsed by an older version: take the full body (no 304) and parse again
+        }
         if let Fetched::Body { text, etag, hash } = fetch(&self.http, &url, etag).await? {
             if old_hash != Some(hash.as_str()) {
                 self.apply_feed(&acc.id, &text, old_hash.is_some()).map_err(other)?;

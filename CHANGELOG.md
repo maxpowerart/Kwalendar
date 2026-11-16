@@ -3,6 +3,14 @@
 Each release's section is shown in Kwalendar's "Update available" dialog and on its GitHub
 release page. The heading must be `## <version>` (the release workflow looks it up by version).
 
+## 0.2.1
+
+Fixed
+- After installing an update the old version could start again, and a manual restart was needed:
+  the app now restarts only once the new version is in place.
+- Calendars by iCal link are requested in the app's language, so texts Google adds to events
+  (like "Join with Google Meet") no longer come in the language of the country you are in.
+
 ## 0.2.0
 
 New
