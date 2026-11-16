@@ -137,7 +137,7 @@ export function Sidebar() {
                   <path d="M1 3l4 4 4-4z" fill="currentColor" />
                 </svg>
                 <span class="nm" title={g.account.name || g.account.email}>{g.account.name || g.account.email.split('@')[0]}</span>
-                <span class="n">{g.account.email}</span>
+                <span class="n">{g.account.kind === 'ics' ? t().icalBadge : g.account.email}</span>
               </button>
               <Show when={!collapsed().has(g.account.id)}>
                 <Show when={g.account.status === 'reauth'}>

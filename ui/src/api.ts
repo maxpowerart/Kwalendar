@@ -11,6 +11,8 @@ export interface Account {
   status: 'ok' | 'syncing' | 'reauth' | 'offline' | 'error';
   error: string | null;
   lastSync: number | null;
+  /** 'google' (OAuth, read-write) | 'ics' (read-only iCal feed link) */
+  kind: 'google' | 'ics';
 }
 
 export interface Calendar {
@@ -163,6 +165,7 @@ export const api = {
   setCalendarSelected: (accountId: string, calendarId: string, selected: boolean) =>
     call<void>('set_calendar_selected', { accountId, calendarId, selected }),
   addAccount: (hint?: string) => call<Account>('add_account', { hint: hint ?? null }),
+  addFeed: (url: string, name?: string) => call<Account>('add_feed', { url, name: name?.trim() || null }),
   removeAccount: (accountId: string) => call<void>('remove_account', { accountId }),
   syncNow: () => call<void>('sync_now'),
   createEvent: (input: EventInput) => call<string>('create_event', { input }),

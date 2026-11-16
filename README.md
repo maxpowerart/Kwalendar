@@ -76,6 +76,14 @@ Kwalendar*. Work accounts on Google Workspace may block apps their admin has not
 (*"You can't access this app until an admin…"*): the admin can allow Kwalendar in the Admin
 console under *Security › Access and data control › API controls › Manage third-party app access*.
 
+**When the admin won't allow API access**, add the calendar by its iCal link instead: in Google
+Calendar open *Settings › (the calendar) › Integrate calendar › Secret address in iCal format*,
+copy it, and use *Settings › Accounts › Add by iCal link* in Kwalendar. Such a calendar is
+**read-only**: you see its events and get reminders, but cannot create, move or answer them from
+Kwalendar. It is re-downloaded every 2–3 minutes (with `ETag`, so an unchanged feed costs one
+short request). The link is a secret and is kept in the Windows Credential Manager. Any other
+`.ics` / `webcal://` feed (Outlook, iCloud, holidays) works the same way.
+
 Your data stays on your PC: see the [Privacy Policy](https://kwasoftware.org/Kwalendar/privacy.html).
 
 ## Updates and going back

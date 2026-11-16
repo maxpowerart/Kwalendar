@@ -11,6 +11,8 @@ pub struct Account {
     pub status: String,
     pub error: Option<String>,
     pub last_sync: Option<i64>,
+    /// "google" (OAuth, read-write) | "ics" (read-only iCal feed link)
+    pub kind: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -15,6 +15,7 @@ When you connect a Google account, Kwalendar requests these Google permissions:
 
 - **It stays on your computer.** Calendars and events are stored in a local database (`%APPDATA%\com.kwalendar.app\kwalendar.db`) so the app opens instantly and works offline.
 - **Sign-in tokens** (OAuth refresh tokens) are stored in the Windows Credential Manager, not in files.
+- **iCal links.** A calendar added by its iCal link is downloaded from that link only; the link (which is itself a secret) is stored in the Windows Credential Manager, never in files or logs. Nothing is ever sent back to that address.
 - Kwalendar talks **directly to Google's APIs**. There is no Kwalendar server; the developer receives none of your data.
 - **Optional push relay.** If you set one up yourself (see `relay/`), Google notifies that relay that "something changed in a calendar". The relay stores only a counter per channel and never receives event contents.
 - **Update checks** download release information from GitHub (`github.com/maxpowerart/Kwalendar`). No personal data is sent.

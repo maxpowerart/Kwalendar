@@ -52,6 +52,7 @@
 <ul>
   <li><b>On your computer only.</b> Calendars and events are cached in a local database at <code>%APPDATA%\com.kwalendar.app\kwalendar.db</code> so the app opens instantly and works offline. App settings are in <code>config.json</code> in the same folder.</li>
   <li><b>Sign-in tokens</b> (OAuth refresh tokens) are stored in the Windows Credential Manager, protected by your Windows account.</li>
+  <li><b>iCal links.</b> A calendar added by its iCal link is downloaded from that link only. The link (itself a secret) is stored in the Windows Credential Manager, never in files or logs, and nothing is ever sent back to that address.</li>
   <li>There is no Kwalendar server or cloud: the app communicates directly with Google’s servers over HTTPS.</li>
 </ul>
 

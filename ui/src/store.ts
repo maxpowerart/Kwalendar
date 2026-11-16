@@ -165,7 +165,7 @@ function createStore() {
   function newDraft(start: number, end: number, allDay = false, title = ''): Draft | null {
     const cal = defaultCalendar();
     if (!cal) {
-      banner(t().connectFirst, 'warn', { label: t().settings, run: () => setSettings(true) });
+      banner(calendars().length ? t().onlyReadOnly : t().connectFirst, 'warn', { label: t().settings, run: () => setSettings(true) });
       return null;
     }
     return {

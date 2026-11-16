@@ -331,7 +331,7 @@ fn parse_time(v: &Value) -> (Option<i64>, Option<String>, Option<String>) {
     (None, None, tz)
 }
 
-fn find_link(text: &str) -> Option<String> {
+pub(crate) fn find_link(text: &str) -> Option<String> {
     const HOSTS: [&str; 4] = ["meet.google.com/", "zoom.us/", "teams.microsoft.com/", "telemost.yandex.ru/"];
     for word in text.split(|c: char| c.is_whitespace() || c == '"' || c == '<' || c == '>' || c == '\'') {
         if word.starts_with("https://") && HOSTS.iter().any(|h| word.contains(h)) {

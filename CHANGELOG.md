@@ -3,6 +3,17 @@
 Each release's section is shown in Kwalendar's "Update available" dialog and on its GitHub
 release page. The heading must be `## <version>` (the release workflow looks it up by version).
 
+## 0.2.0
+
+New
+- Calendars by iCal link (Settings › Accounts › Add by iCal link), for work accounts where the
+  admin does not allow API access. In Google Calendar: Settings › the calendar › Integrate
+  calendar › Secret address in iCal format. Such calendars are read-only: events, series,
+  reminders and Meet links are shown, but events cannot be created, moved or answered.
+  Refreshed every 2–3 minutes; the link is kept in the Windows Credential Manager.
+- English interface (follows the Windows language or is set in Settings › System).
+- Readable calendar names and one-line account headers in the sidebar.
+
 ## 0.1.0
 
 First release.

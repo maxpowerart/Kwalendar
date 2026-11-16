@@ -63,9 +63,57 @@ export function GoogleClientForm(props: { onSaved?: () => void }) {
   );
 }
 
+function IcalForm(props: { onDone: () => void }) {
+  const [url, setUrl] = createSignal('');
+  const [name, setName] = createSignal('');
+  const [busy, setBusy] = createSignal(false);
+  const add = async () => {
+    setBusy(true);
+    const acc = await store.run(api.addFeed(url().trim(), name()));
+    setBusy(false);
+    if (acc) {
+      store.banner(t().icalAdded(acc.name || acc.email));
+      await store.refresh();
+      props.onDone();
+    }
+  };
+  return (
+    <div class="ical-form">
+      <p style={{ 'font-weight': 600 }}>{t().icalTitle}</p>
+      <p class="muted" style={{ 'font-size': '12px' }}>{t().icalHint}</p>
+      <input
+        class="inp"
+        style={{ width: '100%' }}
+        type="password"
+        placeholder={t().icalUrl}
+        aria-label={t().icalUrl}
+        value={url()}
+        onInput={(e) => setUrl(e.currentTarget.value)}
+        onKeyDown={(e) => e.key === 'Enter' && url().trim() && !busy() && add()}
+        spellcheck={false}
+        autocomplete="off"
+      />
+      <input
+        class="inp"
+        style={{ width: '100%' }}
+        placeholder={t().icalName}
+        aria-label={t().icalName}
+        value={name()}
+        onInput={(e) => setName(e.currentTarget.value)}
+        onKeyDown={(e) => e.key === 'Enter' && url().trim() && !busy() && add()}
+      />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button class="btn primary" disabled={!url().trim() || busy()} onClick={add}>{busy() ? t().icalAdding : t().icalAdd}</button>
+        <button class="btn ghost" disabled={busy()} onClick={props.onDone}>{t().cancel}</button>
+      </div>
+    </div>
+  );
+}
+
 export function Settings() {
   const [section, setSection] = createSignal<Section>(store.snap()?.builtinClient || store.snap()?.config.googleClientId ? 'accounts' : 'google');
   const [adding, setAdding] = createSignal(false);
+  const [icalOpen, setIcalOpen] = createSignal(false);
   const [autostart, { mutate: setAutostart }] = createResource(() => api.autostartGet().catch(() => false));
   const snap = () => store.snap();
   const cfg = () => snap()!.config;
@@ -110,7 +158,7 @@ export function Settings() {
             )}
           </For>
           <div style={{ flex: 1 }} />
-          <p class="muted" style={{ padding: '0 10px', 'font-size': '12px' }}>Kwalendar 0.1.0{isTauri ? '' : t().preview}</p>
+          <p class="muted" style={{ padding: '0 10px', 'font-size': '12px' }}>Kwalendar 0.2.0{isTauri ? '' : t().preview}</p>
         </nav>
         <main class="set-main">
           <div style={{ display: 'flex', 'align-items': 'center' }}>
@@ -124,19 +172,28 @@ export function Settings() {
                 <For each={snap()!.accounts} fallback={<p class="muted">{t().noAccountsYet}</p>}>
                   {(a) => {
                     const cals = () => snap()!.calendars.filter((c) => c.accountId === a.id).length;
+                    const ics = a.kind === 'ics';
+                    const checked = () => (a.lastSync ? t().checkedAt(time(a.lastSync)) : t().firstLoad);
                     return (
                       <div class="card" classList={{ warn: a.status === 'reauth' || a.status === 'error' }}>
                         <span class="avb" style={{ background: a.color }}>{(a.name || a.email).charAt(0).toUpperCase()}</span>
                         <div style={{ flex: 1, 'min-width': 0 }}>
                           <p style={{ 'font-weight': 600 }}>
-                            {a.email} <Show when={a.name}><span class="muted" style={{ 'font-weight': 400 }}>· {a.name}</span></Show>
+                            <Show
+                              when={!ics}
+                              fallback={<>{a.name} <span class="muted" style={{ 'font-weight': 400 }}>· {a.email}</span></>}
+                            >
+                              {a.email} <Show when={a.name}><span class="muted" style={{ 'font-weight': 400 }}>· {a.name}</span></Show>
+                            </Show>
                           </p>
                           <p class="muted" style={{ 'font-size': '12px', color: a.status === 'reauth' || a.status === 'error' ? 'var(--warn-text)' : undefined }}>
                             {a.status === 'reauth'
                               ? t().revoked
                               : a.status === 'error'
                                 ? a.error
-                                : `${t().calCount(cals())} · ${a.lastSync ? t().checkedAt(time(a.lastSync)) : t().firstLoad}`}
+                                : ics
+                                  ? `${t().icalBadge} · ${checked()}`
+                                  : `${t().calCount(cals())} · ${checked()}`}
                           </p>
                         </div>
                         <Show when={a.status === 'reauth'}>
@@ -156,12 +213,23 @@ export function Settings() {
                   }}
                 </For>
               </div>
-              <div>
-                <button class="btn primary" disabled={adding()} onClick={() => add()}>
-                  {I.plus({ size: 14, stroke: 2.4 })}
-                  {adding() ? t().waitingBrowser : t().addGoogleAccount}
-                </button>
-              </div>
+              <Show
+                when={icalOpen()}
+                fallback={
+                  <div style={{ display: 'flex', gap: '8px', 'flex-wrap': 'wrap' }}>
+                    <button class="btn primary" disabled={adding()} onClick={() => add()}>
+                      {I.plus({ size: 14, stroke: 2.4 })}
+                      {adding() ? t().waitingBrowser : t().addGoogleAccount}
+                    </button>
+                    <button class="btn" disabled={adding()} onClick={() => setIcalOpen(true)}>
+                      {I.plus({ size: 14, stroke: 2.4 })}
+                      {t().addIcal}
+                    </button>
+                  </div>
+                }
+              >
+                <IcalForm onDone={() => setIcalOpen(false)} />
+              </Show>
             </Match>
             <Match when={section() === 'google'}>
               <Show

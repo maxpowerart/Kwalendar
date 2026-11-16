@@ -380,6 +380,9 @@ impl Core {
         if !matches!(response, "accepted" | "declined" | "tentative") {
             bail!(crate::tr!("неизвестный ответ", "unknown response"));
         }
+        if self.db.account_kind(&target.account_id)?.as_deref() == Some(crate::ics::KIND) {
+            bail!(crate::tr!("Календарь по ссылке iCal только для чтения", "Calendars added by iCal link are read-only"));
+        }
         let mut row = self.row_for(&target)?;
         let mut found = false;
         for a in row.attendees.iter_mut() {

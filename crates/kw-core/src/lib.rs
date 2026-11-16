@@ -5,6 +5,7 @@ pub mod config;
 pub mod db;
 pub mod google;
 pub mod i18n;
+pub mod ics;
 pub mod models;
 pub mod recurrence;
 mod push;
@@ -78,7 +79,7 @@ impl Core {
 
     fn with_db(db: Db, dir: &Path, emit: Emitter) -> Result<Self> {
         let http = reqwest::Client::builder()
-            .user_agent("Kwalendar/0.1 (gzip)")
+            .user_agent("Kwalendar/0.2 (gzip)")
             .gzip(true)
             .pool_idle_timeout(Duration::from_secs(90))
             .connect_timeout(Duration::from_secs(10))

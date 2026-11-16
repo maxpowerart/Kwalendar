@@ -48,7 +48,14 @@ impl Core {
             return;
         }
         self.set_sync_state("syncing", None);
-        let results = futures::future::join_all(accounts.iter().map(|a| self.sync_account_retry(a))).await;
+        let results = futures::future::join_all(accounts.iter().map(|a| async move {
+            if a.kind == crate::ics::KIND {
+                self.sync_feed(a, false).await
+            } else {
+                self.sync_account_retry(a).await
+            }
+        }))
+        .await;
         let before: Vec<String> = accounts.iter().map(|a| a.status.clone()).collect();
 
         let mut offline = false;
@@ -471,7 +478,7 @@ impl Core {
     }
 }
 
-fn detect_notice(existing: Option<&EventRow>, new: &EventRow) -> Option<Notice> {
+pub(crate) fn detect_notice(existing: Option<&EventRow>, new: &EventRow) -> Option<Notice> {
     let title = new.summary.clone().unwrap_or_else(crate::recurrence::untitled);
     match existing {
         Some(old) if old.status != "cancelled" => {

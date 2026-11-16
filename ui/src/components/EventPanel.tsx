@@ -55,7 +55,9 @@ export function EventPanel(props: { inst: Instance }) {
     for (const a of i().attendees) c[a.response] = (c[a.response] ?? 0) + 1;
     return c;
   });
-  const isAttendee = () => i().attendees.some((a) => a.isSelf) && !i().organizerSelf;
+  // iCal-link calendars are read-only: the answer is shown in the guest list but cannot be changed.
+  const readOnlyFeed = () => store.snap()?.accounts.find((a) => a.id === i().accountId)?.kind === 'ics';
+  const isAttendee = () => i().attendees.some((a) => a.isSelf) && !i().organizerSelf && !readOnlyFeed();
   const rel = () => relative(i().start, i().end, store.now());
 
   const respond = (r: string) => store.run(api.respond(targetOf(i()), r));

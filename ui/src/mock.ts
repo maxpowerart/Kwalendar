@@ -14,9 +14,9 @@ const listeners = new Map<string, Set<(p: unknown) => void>>();
 const emit = (event: string, payload: unknown = null) => listeners.get(event)?.forEach((cb) => cb(payload));
 
 const accounts: Account[] = [
-  { id: 'a1', email: 'me@gmail.com', name: L('Личный', 'Personal'), color: '#A57CF0', status: 'ok', error: null, lastSync: Date.now() },
-  { id: 'a2', email: 'me@company.com', name: L('Работа', 'Work'), color: '#5B8DEF', status: 'ok', error: null, lastSync: Date.now() },
-  { id: 'a3', email: 'family@gmail.com', name: L('Семья', 'Family'), color: '#E5604F', status: 'reauth', error: L('Доступ отозван', 'Access revoked'), lastSync: Date.now() - 7200_000 },
+  { id: 'a1', email: 'me@gmail.com', name: L('Личный', 'Personal'), color: '#A57CF0', status: 'ok', error: null, lastSync: Date.now(), kind: 'google' },
+  { id: 'a2', email: 'me@company.com', name: L('Работа', 'Work'), color: '#5B8DEF', status: 'ok', error: null, lastSync: Date.now(), kind: 'google' },
+  { id: 'a3', email: 'family@gmail.com', name: L('Семья', 'Family'), color: '#E5604F', status: 'reauth', error: L('Доступ отозван', 'Access revoked'), lastSync: Date.now() - 7200_000, kind: 'google' },
 ];
 
 const cal = (accountId: string, id: string, summary: string, color: string, primary = false, role = 'owner', selected = true): Calendar => ({
@@ -259,6 +259,17 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
       overrides.set(key, { ...overrides.get(key), selfResponse: args.response });
       changed();
       return null;
+    }
+    case 'add_feed': {
+      const url = String(args.url ?? '').trim().replace(/^webcals?:\/\//i, 'https://');
+      if (!/^https?:\/\/\S{4,}$/i.test(url)) throw new Error(L('Нужна ссылка вида https://… или webcal://… на файл .ics', 'Expected an https://… or webcal://… link to an .ics file'));
+      const id = `ics${accounts.length + 1}`;
+      const name = args.name || 'me@company.com';
+      const acc: Account = { id, email: new URL(url).hostname, name, color: '#3DBE8B', status: 'ok', error: null, lastSync: Date.now(), kind: 'ics' };
+      accounts.push(acc);
+      calendars.push(cal(id, 'feed', name, '#3DBE8B', true, 'reader'));
+      changed();
+      return acc;
     }
     case 'add_account':
       throw new Error(L('В браузерном превью вход в Google недоступен — запустите приложение через `npm run tauri dev`', 'Google sign-in is not available in the browser preview — run the app with `npm run tauri dev`'));

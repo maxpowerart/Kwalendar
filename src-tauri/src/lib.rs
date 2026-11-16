@@ -88,6 +88,12 @@ async fn add_account(app: AppHandle, s: State<'_, AppState>, hint: Option<String
 }
 
 #[tauri::command]
+async fn add_feed(s: State<'_, AppState>, url: String, name: Option<String>) -> Res<Account> {
+    let core = s.core.clone();
+    core.add_feed(&url, name).await.map_err(err)
+}
+
+#[tauri::command]
 fn remove_account(s: State<AppState>, account_id: String) -> Res<()> {
     s.core.remove_account(&account_id).map_err(err)
 }
@@ -385,6 +391,7 @@ pub fn run() {
             search,
             set_calendar_selected,
             add_account,
+            add_feed,
             remove_account,
             sync_now,
             create_event,

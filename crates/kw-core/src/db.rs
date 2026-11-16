@@ -123,6 +123,12 @@ impl Db {
                  PRAGMA user_version = 2;",
             )?;
         }
+        if version < 3 {
+            conn.execute_batch(
+                "ALTER TABLE accounts ADD COLUMN kind TEXT NOT NULL DEFAULT 'google';
+                 PRAGMA user_version = 3;",
+            )?;
+        }
         Ok(Self { conn: Mutex::new(conn) })
     }
 
@@ -135,7 +141,7 @@ impl Db {
     pub fn accounts(&self) -> Result<Vec<Account>> {
         let c = self.conn();
         let mut st = c.prepare(
-            "SELECT id, email, name, color, status, error, last_sync FROM accounts ORDER BY sort, email",
+            "SELECT id, email, name, color, status, error, last_sync, kind FROM accounts ORDER BY sort, email",
         )?;
         let rows = st
             .query_map([], |r| {
@@ -147,10 +153,58 @@ impl Db {
                     status: r.get(4)?,
                     error: r.get(5)?,
                     last_sync: r.get(6)?,
+                    kind: r.get(7)?,
                 })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
+    }
+
+    pub fn account_kind(&self, id: &str) -> Result<Option<String>> {
+        Ok(self
+            .conn()
+            .query_row("SELECT kind FROM accounts WHERE id = ?1", [id], |r| r.get(0))
+            .optional()?)
+    }
+
+    /// Adds a read-only feed account; returns its colour.
+    pub fn insert_feed_account(&self, id: &str, label: &str, name: &str, kind: &str) -> Result<String> {
+        let c = self.conn();
+        let count: i64 = c.query_row("SELECT COUNT(*) FROM accounts", [], |r| r.get(0))?;
+        let color = crate::models::ACCOUNT_COLORS[(count as usize) % crate::models::ACCOUNT_COLORS.len()];
+        c.execute(
+            "INSERT INTO accounts(id, email, name, color, sort, kind) VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+            params![id, label, name, color, count, kind],
+        )?;
+        Ok(color.to_string())
+    }
+
+    /// Replaces every event of a calendar in one transaction (feeds have no deltas).
+    /// Returns the rows that were there before, keyed by id, for change notices.
+    pub fn replace_calendar_events(
+        &self,
+        account: &str,
+        cal: &str,
+        rows: &[EventRow],
+    ) -> Result<std::collections::HashMap<String, EventRow>> {
+        let mut c = self.conn();
+        let tx = c.transaction()?;
+        let old = {
+            let mut st = tx.prepare(&format!(
+                "SELECT {} FROM events WHERE account_id = ?1 AND calendar_id = ?2",
+                Self::EVENT_COLS
+            ))?;
+            let list = st
+                .query_map([account, cal], Self::map_event)?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            list.into_iter().map(|e| (e.id.clone(), e)).collect()
+        };
+        tx.execute("DELETE FROM events WHERE account_id = ?1 AND calendar_id = ?2", [account, cal])?;
+        for r in rows {
+            Self::upsert_event_conn(&tx, r)?;
+        }
+        tx.commit()?;
+        Ok(old)
     }
 
     pub fn upsert_account(&self, id: &str, email: &str, name: Option<&str>) -> Result<()> {
