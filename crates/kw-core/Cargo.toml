@@ -1,6 +1,6 @@
 [package]
 name = "kw-core"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "Kwalendar core: local store, Google Calendar sync, recurrence, reminders"
 

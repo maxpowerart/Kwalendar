@@ -267,7 +267,9 @@ input, textarea { user-select: text; }
 .col.we { background-color: var(--faint); }
 .ev {
   position: absolute; border: 0; border-radius: 3px; padding: 3px 6px; overflow: hidden; font-size: 12px; line-height: 15px;
-  text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; display: block; touch-action: none;
+  text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; touch-action: none;
+  /* A <button> centres its content vertically; when it does not fit, the title would be cut off at the top. */
+  display: flex; flex-direction: column; justify-content: flex-start;
 }
 .ev b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ev span { display: block; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

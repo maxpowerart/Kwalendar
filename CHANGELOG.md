@@ -3,6 +3,12 @@
 Each release's section is shown in Kwalendar's "Update available" dialog and on its GitHub
 release page. The heading must be `## <version>` (the release workflow looks it up by version).
 
+## 0.2.2
+
+Fixed
+- Events of about 35–45 minutes in the week view showed only their time, without the title:
+  short events now show "Title · time" on one line, and the title is never cut off at the top.
+
 ## 0.2.1
 
 Fixed

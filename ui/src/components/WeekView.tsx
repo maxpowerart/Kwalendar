@@ -8,6 +8,8 @@ import { t as L } from '../i18n';
 const HOUR = 48;
 const SNAP = 15;
 const px = (min: number) => (min * HOUR) / 60;
+/** Title + time on two lines need 2 × 15px line height + 6px padding inside the block (height − 2). */
+const twoLines = (min: number) => px(min) - 2 >= 36;
 
 type Drag =
   | { kind: 'create'; day: number; from: number; to: number; moved: boolean }
@@ -159,7 +161,7 @@ export function WeekView() {
 
   const evClass = (inst: Instance, h: number) => ({
     ev: true,
-    short: h < 34,
+    short: !twoLines(h),
     past: inst.end < store.now(),
     declined: inst.selfResponse === 'declined',
     tentative: inst.selfResponse === 'tentative' || inst.selfResponse === 'needsAction',
@@ -276,7 +278,7 @@ export function WeekView() {
                         onDblClick={() => p.inst.canEdit && store.setDraft(store.editDraft(p.inst))}
                       >
                         <Show
-                          when={h() >= 34}
+                          when={twoLines(h())}
                           fallback={
                             <b>
                               {p.inst.title} <span style={{ display: 'inline', opacity: 0.8, 'font-weight': 400 }}>· {time(p.inst.start)}</span>
