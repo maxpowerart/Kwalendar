@@ -1,3 +1,4 @@
+mod today;
 mod toast;
 mod updater;
 
@@ -145,7 +146,7 @@ fn set_config(app: AppHandle, s: State<AppState>, mut config: Config) -> Res<()>
         if let Some(menu) = app.try_state::<TrayMenu>() {
             menu.relabel();
         }
-        update_tray_tooltip(&app, &s.core);
+        update_tray(&app, &s.core);
     }
     Ok(())
 }
@@ -166,6 +167,25 @@ fn app_ready(app: AppHandle, s: State<AppState>) {
     if !s.start_hidden.swap(false, Ordering::Relaxed) {
         toast::show_main(&app);
     }
+}
+
+#[tauri::command]
+fn today_hide(app: AppHandle) {
+    today::hide(&app);
+}
+
+#[tauri::command]
+fn today_pin(app: AppHandle, pinned: bool) {
+    today::set_pinned(&app, pinned);
+}
+
+/// "Open in Kwalendar" from the popup: the popup then sends the day or event to the main window.
+#[tauri::command]
+fn open_main(app: AppHandle) {
+    if !today::is_pinned(&app) {
+        today::hide(&app);
+    }
+    toast::show_main(&app);
 }
 
 #[tauri::command]
@@ -212,12 +232,52 @@ fn test_notification(app: AppHandle, s: State<AppState>) {
     toast::reminder(&app, s.core.clone(), kw_core::Reminder { key: "test".into(), instance: inst, minutes_before: 10 });
 }
 
-fn update_tray_tooltip(app: &AppHandle, core: &Core) {
+/// Whether the tray icon currently carries the "event soon" dot, to avoid resetting the icon every tick.
+static TRAY_DOT: AtomicBool = AtomicBool::new(false);
+/// An event within this many minutes puts an orange dot on the tray icon.
+const SOON_MIN: i64 = 15;
+
+/// The app icon with an orange dot in the top-right corner (the "now" accent of the logo).
+fn icon_with_dot(base: &tauri::image::Image<'_>) -> tauri::image::Image<'static> {
+    let (w, h) = (base.width() as i64, base.height() as i64);
+    let mut px = base.rgba().to_vec();
+    let r = (w.min(h) as f64) * 0.2;
+    let ring = r + (w as f64 / 32.0).max(1.0);
+    let (cx, cy) = (w as f64 - ring, ring);
+    for y in 0..h {
+        for x in 0..w {
+            let d = ((x as f64 + 0.5 - cx).powi(2) + (y as f64 + 0.5 - cy).powi(2)).sqrt();
+            let i = ((y * w + x) * 4) as usize;
+            if d <= r {
+                // Anti-aliased edge over whatever is below.
+                let a = (r - d).clamp(0.0, 1.0);
+                let blend = |under: u8, over: u8| (under as f64 * (1.0 - a) + over as f64 * a).round() as u8;
+                px[i] = blend(px[i], 0xFD);
+                px[i + 1] = blend(px[i + 1], 0x99);
+                px[i + 2] = blend(px[i + 2], 0x21);
+                px[i + 3] = blend(px[i + 3], 0xFF).max((a * 255.0) as u8);
+            } else if d <= ring {
+                // Transparent ring so the dot reads on any taskbar colour.
+                px[i + 3] = 0;
+            }
+        }
+    }
+    tauri::image::Image::new_owned(px, w as u32, h as u32)
+}
+
+fn update_tray(app: &AppHandle, core: &Core) {
     let now = chrono::Utc::now().timestamp_millis();
     let next = core
         .instances(now, now + 24 * 3600_000)
         .ok()
         .and_then(|l| l.into_iter().find(|i| !i.all_day && i.start >= now && i.self_response.as_deref() != Some("declined")));
+    let soon = next.as_ref().is_some_and(|i| i.start - now <= SOON_MIN * 60_000);
+    if TRAY_DOT.swap(soon, Ordering::Relaxed) != soon {
+        if let (Some(tray), Some(base)) = (app.tray_by_id("main"), app.default_window_icon()) {
+            let icon = if soon { icon_with_dot(base) } else { base.clone().to_owned() };
+            let _ = tray.set_icon(Some(icon));
+        }
+    }
     let text = match next {
         Some(i) => {
             use chrono::TimeZone;
@@ -240,7 +300,7 @@ fn handle_core_event(app: &AppHandle, ev: CoreEvent) {
         CoreEvent::DataChanged => {
             let _ = app.emit("kw:changed", ());
             if let Some(s) = app.try_state::<AppState>() {
-                update_tray_tooltip(app, &s.core);
+                update_tray(app, &s.core);
             }
         }
         CoreEvent::Sync(status) => {
@@ -283,10 +343,7 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, ev| match ev.id().as_ref() {
             "open" => toast::show_main(app),
-            "new" => {
-                toast::show_main(app);
-                let _ = app.emit("kw:quickadd", ());
-            }
+            "new" => today::show(app, None, true),
             "sync" => {
                 if let Some(s) = app.try_state::<AppState>() {
                     s.core.sync_now();
@@ -302,8 +359,8 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             _ => {}
         })
         .on_tray_icon_event(|tray, ev| {
-            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = ev {
-                toast::show_main(tray.app_handle());
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, rect, .. } = ev {
+                today::toggle(tray.app_handle(), Some(rect));
             }
         })
         .build(app)?;
@@ -328,8 +385,7 @@ pub fn run() {
                 .expect("shortcut")
                 .with_handler(|app, _shortcut, event| {
                     if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        toast::show_main(app);
-                        let _ = app.emit("kw:quickadd", ());
+                        today::show(app, None, true);
                     }
                 })
                 .build(),
@@ -347,7 +403,18 @@ pub fn run() {
             app.manage(updater::Updates::default());
             app.manage(AppState { core: core.clone(), start_hidden: AtomicBool::new(start_hidden) });
             build_tray(app.handle())?;
-            update_tray_tooltip(app.handle(), &core);
+            update_tray(app.handle(), &core);
+            today::create(app.handle())?;
+
+            // The "event soon" dot on the tray icon appears on time, not only when data changes.
+            let h = app.handle().clone();
+            let c = core.clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                    update_tray(&h, &c);
+                }
+            });
 
             tauri::async_runtime::spawn(core.clone().run_sync_loop());
             tauri::async_runtime::spawn(core.clone().run_reminder_loop());
@@ -379,7 +446,11 @@ pub fn run() {
                 let _ = window.hide();
             }
             WindowEvent::Focused(f) => {
-                if let Some(s) = window.app_handle().try_state::<AppState>() {
+                if window.label() == today::LABEL {
+                    if !*f {
+                        today::on_blur(window);
+                    }
+                } else if let Some(s) = window.app_handle().try_state::<AppState>() {
                     s.core.set_focused(*f);
                 }
             }
@@ -404,6 +475,9 @@ pub fn run() {
             mute,
             open_url,
             app_ready,
+            today_hide,
+            today_pin,
+            open_main,
             autostart_get,
             autostart_set,
             test_notification,

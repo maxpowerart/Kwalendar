@@ -181,7 +181,18 @@ export const api = {
   autostartGet: () => call<boolean>('autostart_get'),
   autostartSet: (enabled: boolean) => call<void>('autostart_set', { enabled }),
   testNotification: () => call<void>('test_notification'),
+  // today popup
+  todayHide: () => call<void>('today_hide'),
+  todayPin: (pinned: boolean) => call<void>('today_pin', { pinned }),
+  openMain: () => call<void>('open_main'),
 };
+
+/** Sends an event to the main window only (the popup uses it to open a day or an event there). */
+export async function emitToMain(event: string, payload?: unknown): Promise<void> {
+  if (!isTauri) return;
+  const { emitTo } = await import('@tauri-apps/api/event');
+  await emitTo('main', event, payload);
+}
 
 // ---------- updates ----------
 

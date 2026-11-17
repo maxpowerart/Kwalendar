@@ -367,6 +367,27 @@ const ru = {
   installedTag: ' · установлена',
   prereleaseTag: ' · пре-релиз',
   withdrawnTag: (r: string) => `отозвана${r ? `: ${r}` : ''}`,
+
+  // today popup (tray)
+  tdAria: 'Kwalendar: день',
+  tdSub: (w: number, n: number) => `неделя ${w} · ${n ? `${n} ${pluralRu(n, 'событие', 'события', 'событий')}` : 'нет событий'}`,
+  tdNext: 'Далее',
+  tdDetails: 'Подробнее',
+  tdDur: (h: number, m: number) => [h && `${h} ч`, m && `${m} мин`].filter(Boolean).join(' '),
+  tdFree: (from: string, to: string, d: string) => `свободно ${from}–${to} · ${d}`,
+  tdFreeTitle: 'Создать событие в этом окне',
+  tdNothing: 'Ничего не запланировано',
+  tdNothingHint: 'Напишите внизу, чтобы добавить событие.',
+  tdQuickPh: 'Добавить: созвон с Алексом в 15:30',
+  tdQuickAria: 'Быстрое добавление',
+  tdEnter: 'Enter — добавить · Tab — подробнее',
+  tdPin: 'Закрепить: не прятать при клике мимо',
+  tdUnpin: 'Открепить',
+  tdOpenApp: 'Открыть в Kwalendar',
+  tdPrevDay: 'Предыдущий день (←)',
+  tdNextDay: 'Следующий день (→)',
+  tdMute: 'Тишина на 1 час',
+  tdBack: 'Назад (Esc)',
 };
 
 export type Dict = typeof ru;
@@ -692,6 +713,26 @@ const en: Dict = {
   installedTag: ' · installed',
   prereleaseTag: ' · pre-release',
   withdrawnTag: (r) => `withdrawn${r ? `: ${r}` : ''}`,
+
+  tdAria: 'Kwalendar: day',
+  tdSub: (w, n) => `Week ${w} · ${n ? `${n} ${pl(n, 'event', 'events')}` : 'no events'}`,
+  tdNext: 'Next',
+  tdDetails: 'Details',
+  tdDur: (h, m) => [h && `${h} h`, m && `${m} min`].filter(Boolean).join(' '),
+  tdFree: (from, to, d) => `free ${from}–${to} · ${d}`,
+  tdFreeTitle: 'Add an event in this gap',
+  tdNothing: 'Nothing planned',
+  tdNothingHint: 'Type below to add an event.',
+  tdQuickPh: 'Add: Call Alex at 15:30',
+  tdQuickAria: 'Quick add',
+  tdEnter: 'Enter to add · Tab for more',
+  tdPin: 'Pin: keep open when clicking elsewhere',
+  tdUnpin: 'Unpin',
+  tdOpenApp: 'Open in Kwalendar',
+  tdPrevDay: 'Previous day (←)',
+  tdNextDay: 'Next day (→)',
+  tdMute: 'Do not disturb for 1 hour',
+  tdBack: 'Back (Esc)',
 };
 
 /** Current dictionary; reactive inside JSX and memos. */

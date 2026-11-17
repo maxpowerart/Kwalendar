@@ -3,6 +3,19 @@
 Each release's section is shown in Kwalendar's "Update available" dialog and on its GitHub
 release page. The heading must be `## <version>` (the release workflow looks it up by version).
 
+## 0.3.0
+
+New
+- Today popup from the tray: a left click on the Kwalendar icon opens a small window with your
+  day next to the taskbar. It shows the next meeting with a Join button, all-day events, the
+  day's events with the current time and free gaps (click a gap to create an event there).
+  Open an event to see details, answer Yes / Maybe / No, edit or delete it. Type in the field
+  at the bottom to add an event ("Call Alex 15:30 for 30 min"): Enter adds it, Tab opens the
+  full form. ← → switch days; the arrow button opens the day in the main window.
+  The popup hides when you click elsewhere; the pin keeps it open. Right click still opens the menu.
+- Ctrl+Alt+K and "New event…" in the tray menu now open this popup with the cursor in quick add.
+- An orange dot on the tray icon when an event starts within 15 minutes.
+
 ## 0.2.2
 
 Fixed

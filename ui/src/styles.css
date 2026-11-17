@@ -413,6 +413,80 @@ textarea.inp { height: auto; min-height: 72px; padding: 6px 8px; resize: vertica
 @media (max-width: 1100px) { .panel { flex-basis: 290px; } }
 @media (max-width: 960px) { .sidebar { display: none; } }
 
+/* ---------- today popup (tray window) ---------- */
+.td { height: 100%; display: flex; flex-direction: column; position: relative; overflow: hidden; background: var(--window); border: 1px solid var(--btn-line); outline: none; }
+.td-head { height: 52px; flex: 0 0 auto; display: flex; align-items: center; gap: 2px; padding: 0 6px 0 12px; background: var(--chrome); color: var(--chrome-text); }
+.td-head img { display: block; margin-right: 8px; flex: 0 0 auto; }
+.td-head .chrome-btn { margin-right: 2px; }
+.td-head .cb.on { background: var(--chrome-hover); }
+.td-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.td-title b { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 14px; font-weight: 600; }
+.td-title b .tx { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-title > span { font-size: 11.5px; color: var(--chrome-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-badge { flex: 0 0 auto; font-size: 11px; font-weight: 600; padding: 0 5px; border-radius: 3px; background: var(--node); color: var(--on-node); }
+.td-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding-bottom: 8px; }
+.td-next { margin: 10px 10px 2px; padding: 10px 12px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.td-next .h { display: flex; align-items: center; gap: 6px; }
+.td-next .in { font-size: 12px; font-weight: 600; color: var(--node); }
+.td-next .tt { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 15px; font-weight: 600; color: var(--strong); }
+.td-next .x { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-next .w { font-size: 12px; color: var(--muted); padding-left: 17px; }
+.td-next .acts { display: flex; gap: 6px; margin-top: 6px; }
+.td-next .join { flex: 1; height: 30px; }
+.td-next .btn { height: 30px; }
+.td-ad { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 10px 2px; }
+.td-ad .ad { margin: 0; max-width: 100%; }
+.td-list { display: flex; flex-direction: column; gap: 1px; padding: 6px 6px 0; }
+.td-ev { width: 100%; display: flex; align-items: stretch; gap: 10px; padding: 6px 8px; border: 0; border-radius: 4px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.td-ev:hover { background: var(--line2); }
+.td-ev.past { opacity: 0.5; }
+.td-ev.declined { opacity: 0.45; }
+.td-ev.declined .tt { text-decoration: line-through; }
+.td-ev.pending { outline: 1px dashed var(--muted); outline-offset: -1px; }
+.td-ev .t { width: 40px; flex: 0 0 auto; display: flex; flex-direction: column; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.td-ev .t span { font-size: 11px; color: var(--muted); }
+.td-ev .bar { width: 3px; flex: 0 0 auto; border-radius: 2px; }
+.td-ev .m { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.td-ev .tt { font-weight: 600; color: var(--strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-ev .sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-ev .sub.now { color: var(--node); }
+.td-ev > svg { flex: 0 0 auto; align-self: center; color: var(--icon); }
+.td-ev .rs { flex: 0 0 auto; align-self: center; font-size: 11px; color: var(--muted); }
+.td-now { display: flex; align-items: center; padding: 2px 8px 2px 4px; }
+.td-now .p { font: 600 11px var(--mono); padding: 0 4px; border-radius: 3px; background: var(--node); color: var(--on-node); }
+.td-now .d { width: 7px; height: 7px; border-radius: 50%; margin-left: 6px; background: var(--node); flex: 0 0 auto; }
+.td-now .l { flex: 1; height: 2px; background: var(--node); }
+.td-free { display: flex; align-items: center; gap: 8px; padding: 3px 8px 3px 58px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 11.5px; cursor: pointer; white-space: nowrap; }
+.td-free:hover { background: var(--line2); color: var(--text); }
+.td-free::before, .td-free::after { content: ''; flex: 1; border-top: 1px dashed var(--line); }
+.td-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 32px 24px; text-align: center; color: var(--muted); }
+.td-empty b { font-size: 14px; color: var(--strong); }
+.td-empty svg { color: var(--icon); }
+.td-qa { flex: 0 0 auto; padding: 8px 10px; border-top: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; gap: 6px; }
+.td-qa-in { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 3px 0 8px; border-radius: 4px; border: 1px solid var(--btn-line); background: var(--extreme); cursor: text; }
+.td-qa-in:focus-within { border-color: var(--icon); }
+.td-qa-in > svg { color: var(--icon); flex: 0 0 auto; }
+.td-qa-in input { flex: 1; min-width: 0; height: 28px; border: 0; outline: none; background: transparent; color: var(--strong); }
+.td-qa-in input::placeholder { color: var(--muted); }
+.td-qa-pv { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 0 2px; }
+.td-qa-pv .x { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-qa-pv b { color: var(--strong); }
+.td-foot { height: 32px; flex: 0 0 auto; display: flex; align-items: center; gap: 2px; padding: 0 4px 0 12px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; color: var(--muted); }
+.td-foot .s { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.td-foot .s .x { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-foot .btn { height: 24px; padding: 0 8px; margin-left: 2px; font-size: 12px; }
+/* the event panel, editor and banners of the main window, fitted into the popup */
+.td .panel { flex: 1 1 auto; min-height: 0; border-left: 0; }
+.td .scrim { position: absolute; padding: 0; align-items: stretch; background: transparent; }
+.td .editor { width: 100%; max-width: none; max-height: none; border: 0; border-radius: 0; box-shadow: none; animation: none; }
+.td .ed-head .seg button { padding: 0 8px; }
+.td .ed-foot > .muted { display: none; }
+.td .ed-foot > .btn.ghost { margin-left: auto; }
+.td .banners { position: absolute; left: 10px; right: 10px; bottom: 84px; }
+/* over the editor: keep its Save button clear */
+.td .scrim ~ .banners { bottom: 60px; }
+.td .banner { min-width: 0; max-width: none; }
+
 /* long account names stay on one line in section headers */
 .sec .nm { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sec .n { flex: 0 1000 auto; max-width: 55%; }

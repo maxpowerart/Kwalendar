@@ -2,6 +2,7 @@ import { render } from 'solid-js/web';
 import '@fontsource/fredoka/600.css';
 import './styles.css';
 import { App } from './App';
+import { Today } from './components/Today';
 import { store } from './store';
 import { initTheme } from './theme';
 
@@ -26,4 +27,7 @@ if (import.meta.env.DEV) {
   }
 }
 
-render(() => <App />, document.getElementById('root')!);
+// The tray popup is the same bundle in a second window: index.html?view=today.
+const isToday = new URLSearchParams(location.search).get('view') === 'today';
+
+render(() => (isToday ? <Today /> : <App />), document.getElementById('root')!);

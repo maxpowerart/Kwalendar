@@ -55,6 +55,8 @@ export const I = {
   sidebar: (p?: P) => svg(<><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></>, p),
   repeat: (p?: P) => svg(<><path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /></>, p),
   send: (p?: P) => svg(<path d="m22 2-7 20-4-9-9-4z" />, p),
+  /** Push pin: "keep the popup open". */
+  pushpin: (p?: P) => svg(<><path d="M9 4h6l-1 6 4 4H6l4-4z" /><path d="M12 14v7" /></>, p),
   dots: (p?: P) => svg(<><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>, { stroke: 3, ...p }),
 };
 

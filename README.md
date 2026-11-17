@@ -43,6 +43,10 @@ storage, recurrence and reminders live in a Rust core that never blocks the wind
   and sent to Google from a queue when the network is back, with conflict handling
   (the server version wins and you are told).
 - **Tray app**: closing the window keeps Kwalendar in the tray; optional start with Windows.
+  A left click on the tray icon (or `Ctrl+Alt+K`) opens a small popup with today: the next
+  meeting with a *Join* button, the day's events with free gaps, details, RSVP, editing and
+  quick add, without opening the main window. An orange dot on the icon means an event starts
+  within 15 minutes.
 - **Languages**: English and Russian; follows the Windows display language or is set in
   Settings › System.
 - **Styles**: dark and light themes (or follow Windows), in the restrained *Kwak* look shared
@@ -144,7 +148,7 @@ The *Release* workflow runs the tests, builds the installer and publishes the Gi
 | Shortcut | Action |
 |---|---|
 | `Ctrl+K` | Quick add and search |
-| `Ctrl+Alt+K` | Quick add from any app (global) |
+| `Ctrl+Alt+K` | Today popup with quick add, from any app (global) |
 | `N` | New event |
 | `T` | Today |
 | `J` / `→`, `K` / `←` | Next / previous period |

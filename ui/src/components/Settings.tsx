@@ -158,7 +158,7 @@ export function Settings() {
             )}
           </For>
           <div style={{ flex: 1 }} />
-          <p class="muted" style={{ padding: '0 10px', 'font-size': '12px' }}>Kwalendar 0.2.2{isTauri ? '' : t().preview}</p>
+          <p class="muted" style={{ padding: '0 10px', 'font-size': '12px' }}>Kwalendar 0.3.0{isTauri ? '' : t().preview}</p>
         </nav>
         <main class="set-main">
           <div style={{ display: 'flex', 'align-items': 'center' }}>

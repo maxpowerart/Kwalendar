@@ -103,6 +103,12 @@ export function App() {
         store.goto(i.start);
         store.setSelected(i);
       }),
+      // "Open in Kwalendar" from the today popup, for a day without a selected event.
+      listen<number>('kw:goto', (day) => {
+        store.setSelected(null);
+        store.goto(day, store.view() === 'month' || store.view() === 'agenda' ? 'day' : undefined);
+      }),
+      listen('kw:open-settings', () => store.setSettings(true)),
     ]);
     onCleanup(() => offs.forEach((off) => off()));
   });
