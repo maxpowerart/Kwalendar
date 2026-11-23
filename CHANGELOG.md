@@ -3,6 +3,13 @@
 Each release's section is shown in Kwalendar's "Update available" dialog and on its GitHub
 release page. The heading must be `## <version>` (the release workflow looks it up by version).
 
+## 0.3.1
+
+New
+- Reminders ring like an alarm: the notification stays on screen and the sound loops until you
+  press Join, Snooze or Dismiss. Pick the sound (Alarm 1–10, Call 1–10) in Settings →
+  Notifications, or turn the alarm off to get the old one-time notification.
+
 ## 0.3.0
 
 New

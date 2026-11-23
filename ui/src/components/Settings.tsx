@@ -290,6 +290,24 @@ export function Settings() {
                   <Toggle on={cfg().remindersEnabled} label={t().reminders} onChange={(v) => patch({ remindersEnabled: v })} />
                 </div>
                 <div class="set">
+                  <div class="l"><p>{t().alarmSet}</p><p>{t().alarmHint}</p></div>
+                  <Toggle on={cfg().alarm} label={t().alarmSet} onChange={(v) => patch({ alarm: v })} />
+                </div>
+                <Show when={cfg().alarm}>
+                  <div class="set">
+                    <div class="l"><p>{t().alarmSound}</p><p>{t().alarmSoundHint}</p></div>
+                    <select class="sel-inp" value={cfg().alarmSound || 'Alarm'} onChange={(e) => patch({ alarmSound: e.currentTarget.value })}>
+                      <For each={['Alarm', 'Call']}>
+                        {(kind) => (
+                          <For each={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}>
+                            {(n) => <option value={n === 1 ? kind : `${kind}${n}`}>{t().soundName(kind, n)}</option>}
+                          </For>
+                        )}
+                      </For>
+                    </select>
+                  </div>
+                </Show>
+                <div class="set">
                   <div class="l"><p>{t().changesSet}</p><p>{t().changesHint}</p></div>
                   <Toggle on={cfg().notifyChanges} label={t().changesAria} onChange={(v) => patch({ notifyChanges: v })} />
                 </div>

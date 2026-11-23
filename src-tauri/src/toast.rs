@@ -107,14 +107,22 @@ pub fn register_aumid(_icon_path: Option<&std::path::Path>) {}
 
 #[cfg(windows)]
 pub fn reminder(app: &AppHandle, core: Arc<Core>, r: Reminder) {
-    use tauri_winrt_notification::{Scenario, Sound, Toast};
+    use tauri_winrt_notification::{LoopableSound, Scenario, Sound, Toast};
     let inst = r.instance.clone();
+    let cfg = core.config();
+    // An alarm toast stays on screen and loops its sound until a button is pressed.
+    let (scenario, sound) = if cfg.alarm {
+        let s = cfg.alarm_sound.parse().unwrap_or(LoopableSound::Alarm);
+        (Scenario::Alarm, Sound::Loop(s))
+    } else {
+        (Scenario::Reminder, Sound::Reminder)
+    };
     let mut toast = Toast::new(AUMID)
         .title(&inst.title)
         .text1(&when_text(&r))
         .text2(&detail_text(&inst))
-        .scenario(Scenario::Reminder)
-        .sound(Some(Sound::Reminder));
+        .scenario(scenario)
+        .sound(Some(sound));
     if inst.meet_link.is_some() {
         toast = toast.add_button(&tr!("Присоединиться", "Join"), "join");
     }

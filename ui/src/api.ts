@@ -68,6 +68,9 @@ export interface Config {
   googleClientId: string;
   googleClientSecret: string;
   remindersEnabled: boolean;
+  alarm: boolean;
+  /** Windows looping sound: 'Alarm', 'Alarm2'..'Alarm10', 'Call'..'Call10' */
+  alarmSound: string;
   notifyChanges: boolean;
   pollFocusedSecs: number;
   pollBackgroundSecs: number;

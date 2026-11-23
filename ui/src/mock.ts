@@ -182,6 +182,8 @@ export async function mockInvoke(cmd: string, args: Record<string, any> = {}): P
           googleClientId: 'demo.apps.googleusercontent.com',
           googleClientSecret: '••••',
           remindersEnabled: true,
+          alarm: true,
+          alarmSound: 'Alarm',
           notifyChanges: true,
           pollFocusedSecs: 30,
           pollBackgroundSecs: 180,

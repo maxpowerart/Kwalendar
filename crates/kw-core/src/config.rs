@@ -9,6 +9,10 @@ pub struct Config {
     pub google_client_id: String,
     pub google_client_secret: String,
     pub reminders_enabled: bool,
+    /// Reminders ring in a loop and stay on screen until the user acts on them.
+    pub alarm: bool,
+    /// Windows looping sound: "Alarm", "Alarm2".."Alarm10", "Call".."Call10".
+    pub alarm_sound: String,
     pub notify_changes: bool,
     pub poll_focused_secs: u64,
     pub poll_background_secs: u64,
@@ -36,6 +40,8 @@ impl Default for Config {
             google_client_id: String::new(),
             google_client_secret: String::new(),
             reminders_enabled: true,
+            alarm: true,
+            alarm_sound: "Alarm".into(),
             notify_changes: true,
             poll_focused_secs: 30,
             poll_background_secs: 180,
